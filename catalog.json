@@ -14,7 +14,7 @@
     {"id":"ai-social-media","name":"AI新媒体工具包","description":"AI 新媒体内容与视觉 Skill","platforms":["all"],"requires_api_key":false},
     {"id":"ai-marketing","name":"AI营销工具包","description":"营销、定价、竞品与增长 Skill","platforms":["all"],"requires_api_key":false},
     {"id":"html-page","name":"HTML页面生成系统","description":"H5、推文页和落地页生成系统","platforms":["all"],"requires_api_key":false},
-    {"id":"ppt-design","name":"PPT制作工具包","description":"PPT 制作相关 Skill 与指南；核心大包通过 Release 分发","platforms":["all"],"requires_api_key":true,"release_artifact":true},
+    {"id":"ppt-design","name":"PPT制作工具包","description":"PPT 制作相关 Skill 与指南；核心大包通过 Release 分发","platforms":["all"],"requires_api_key":true,"release_artifact":true,"download_url":"https://github.com/startupsalad/TikBit/releases/download/v0.1.0/TikBit-PPT-Toolkit-v0.1.0.zip","sha256":"A8DAC842E36A363435343F5ECA7CD9A8F4E3B18B90D610C0CA0D296EDFF840B9"},
     {"id":"ppt-style-gallery","name":"PPT风格速查图册","description":"PPT 风格与 HTML 版式速查图册","platforms":["all"],"requires_api_key":false},
     {"id":"document-reader","name":"文档读取编辑工具包","description":"Word、Excel、PPT、PDF、图片与网页读取工具","platforms":["windows","macos","linux"],"requires_api_key":false},
     {"id":"web-design","name":"网页设计套件","description":"网页设计方法论与设计 Skill","platforms":["all"],"requires_api_key":false},
