@@ -1,0 +1,6 @@
+interface:
+  display_name: "剪口播"
+  short_description: "从逐词转录、口误审核到剪后视频与字幕的完整口播剪辑流程"
+  default_prompt: "使用 $cut-talking-head 处理这条口播视频：转录、判断口误、让用户审核，并在确认后生成剪后视频与字幕。"
+policy:
+  allow_implicit_invocation: true

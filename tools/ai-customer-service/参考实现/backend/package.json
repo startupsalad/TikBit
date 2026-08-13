@@ -1,0 +1,16 @@
+{
+  "name": "salad-ai-chatbot-backend",
+  "version": "1.0.0",
+  "description": "AI 在线客服机器人后端服务（Node.js 原生，零依赖）· 创业沙拉 AI 客服工具包",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "health": "node -e \"require('http').get('http://127.0.0.1:'+(process.env.PORT||8770)+'/health',r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>console.log(d))})\""
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "homepage": "https://startupsalad.com",
+  "dependencies": {}
+}

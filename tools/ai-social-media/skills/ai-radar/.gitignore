@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# OS
+.DS_Store
+
+# 本地运行产物（skill 默认落盘目录）
+ai-radar-reports/

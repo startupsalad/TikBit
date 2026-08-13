@@ -1,0 +1,33 @@
+Skill: video-catcher
+License: GNU General Public License v3.0 only (GPL-3.0-only)
+Source: https://github.com/Weikezi-AI/video-catcher
+Original author: Weikezi-AI
+
+Full license text is included in the skill folder at:
+  skills/video-catcher/LICENSE.txt
+
+=== 使用须知（中文）===
+
+video-catcher 采用 GPL-3.0-only 协议，这是一种强 Copyleft（开源传染）许可证。
+使用本工具包时，请注意以下义务：
+
+1. 分发传染：如果你修改了 video-catcher 的代码并对外发布（包括作为服务提供），
+   修改后的版本必须同样以 GPL-3.0 协议开源发布。
+
+2. 源代码提供：对外分发 video-catcher 时，必须同时提供或注明获取源代码的方式。
+
+3. 许可证保留：分发时必须随附完整的 GPL-3.0 许可证文本和版权声明。
+
+4. 专利限制：GPL-3.0 包含专利条款，贡献者向用户授予专利许可。
+
+5. 商业使用：可以商业使用，但上述 Copyleft 义务同样适用。
+
+注意：GPL-3.0-only 意味着不兼容 GPL-2.0，也不允许升级到更新版本的 GPL。
+
+=== 与本工具包其他 Skill 的兼容性 ===
+
+- watch（MIT）：MIT 与 GPL-3.0 兼容，合并分发时整体受 GPL-3.0 约束
+- local-transcribe（MIT）：同上
+
+如果你只想分发 MIT 协议的 Skill（watch + local-transcribe），可以单独分发，
+不包含 video-catcher，从而避免 GPL 传染。

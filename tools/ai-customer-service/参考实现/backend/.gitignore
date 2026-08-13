@@ -1,0 +1,7 @@
+# 绝不提交的敏感/产物文件
+.env
+*.log
+node_modules/
+npm-debug.log*
+.DS_Store
+Thumbs.db

@@ -1,0 +1,39 @@
+﻿# AI 在线客服机器人 · 一键编排
+# 由创业沙拉 TikBit 出品 · https://startupsalad.com
+#
+# 用法（在 deploy/ 目录下）：
+#   1. 确保 ../backend/.env 已配置好（复制 .env.example 填写）
+#   2. docker compose up -d --build
+#   3. 健康检查：curl http://127.0.0.1:8770/health
+#
+# 说明：本 compose 只起后端服务，对外由宿主机 Nginx 反向代理（见 nginx/chatbot.conf）。
+# 若你想让 compose 也管 Nginx，可自行取消下方 nginx 服务的注释。
+
+services:
+  chatbot:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: salad-ai-chatbot:latest
+    container_name: salad-ai-chatbot
+    restart: unless-stopped
+    # 从 backend/.env 读取配置，含 tikbit 中转站的 ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN
+    # 这两个变量会传进容器，容器内的 claude CLI 自动读取用于鉴权。不在此明文写密钥。
+    env_file:
+      - ../backend/.env
+    # 知识库目录挂载出来，改完重启即可生效，无需重建镜像
+    volumes:
+      - ../backend/knowledge-base:/app/knowledge-base:ro
+    # 只绑定到本机回环，由宿主机 Nginx 转发，不直接暴露公网
+    ports:
+      - "127.0.0.1:8770:8770"
+
+# 如需用容器内 Nginx（而非宿主机 Nginx），可启用：
+#  nginx:
+#    image: nginx:stable
+#    depends_on: [chatbot]
+#    ports:
+#      - "80:80"
+#    volumes:
+#      - ./nginx/chatbot.conf:/etc/nginx/conf.d/chatbot.conf:ro
+

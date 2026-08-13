@@ -1,0 +1,1 @@
+| **做 PPT（通用场景）** | 调`space-multi-design-ppt` skill（`.claude/skills/space-multi-design-ppt/SKILL.md`）：62 种品牌风格（Apple/Claude/Notion/Stripe/Linear/Tesla 等）+ 智能推荐 + DEMO 先行 + HTML/PPTX/PDF 输出。**标准工作流**：框架确认 → 风格 DEMO → 批量制作，见 `memory/ppt-workflow-standard.md` |

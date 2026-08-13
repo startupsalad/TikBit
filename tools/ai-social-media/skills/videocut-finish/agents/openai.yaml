@@ -1,0 +1,6 @@
+interface:
+  display_name: "口播成片"
+  short_description: "从基础素材、分镜和动画到最终导出验收的完整口播成片流程"
+  default_prompt: "使用 $finish-talking-head 把口播基础素材制作成片：生成并审核分镜、动画和时间线，然后导出并验收 final.mp4。"
+policy:
+  allow_implicit_invocation: true

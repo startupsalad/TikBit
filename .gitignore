@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+__pycache__/
+*.py[cod]
+node_modules/
+.venv/
+dist/
+build/
+.WeDrive
+.DS_Store
+Thumbs.db
+*.log
