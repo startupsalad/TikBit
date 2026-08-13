@@ -10,7 +10,28 @@
 https://github.com/startupsalad/TikBit
 ```
 
-请先读取 [`catalog.json`](catalog.json)，根据用户选择的工具读取对应目录下的 `INSTALL.md`，再按当前操作系统执行安装。安装前先确认目标路径、依赖和 API Key 由用户自行提供；不要索取或上传用户的密钥。
+请先读取 [`catalog.json`](catalog.json) 中的 `recommendation_policy` 和完整工具清单。先按“建议必装 → 条件推荐 → 其他按需”的顺序向用户介绍并解释理由，等待用户确认具体工具后，再读取对应目录下的 `INSTALL.md` 并按当前操作系统执行安装。安装前先确认目标路径和依赖；API Key 由用户自行在本机配置，不要索取、回显或上传用户的密钥。
+
+## 安装建议
+
+推荐只代表优先级，**不会跳过用户确认自动安装**。
+
+### 建议必装
+
+| 工具 | 推荐理由 |
+|:---:|:---|
+| `html-page` | AI 生成的文案、方案和 PPT 内容，更适合先通过 HTML 页面呈现、检查和交付。 |
+| `document-reader` | 增强 PDF、Word、Excel、PPT、图片和网页等常用资料的读取、解析与编辑能力。 |
+| `context-reminder` | 有效节省 Token，并降低对话过长后 AI 遗漏信息、跑偏或输出不稳定的概率。 |
+
+### 条件推荐
+
+| 工具 | 适合谁 |
+|:---:|:---|
+| `voice-notification` | 会同时运行多个任务，或经常遇到需要几分钟到几十分钟的任务，并且设备具备语音播放条件。 |
+| `writing-humanizer` | 经常写文案、陈述稿、讲稿和其他对外文字。 |
+
+其余工具由 AI 根据用户的实际任务按需推荐。
 
 ## 快速安装
 
@@ -30,20 +51,20 @@ curl -fsSL https://raw.githubusercontent.com/startupsalad/TikBit/main/install.sh
 
 ## 工具目录
 
-| 工具 | 用途 |
-|:---:|:---:|
-| `ai-customer-service` | 在线客服机器人参考实现与 Skill |
-| `ai-social-media` | AI 新媒体内容与视觉 Skill |
-| `ai-marketing` | 营销、定价、竞品与增长 Skill |
-| `html-page` | H5、推文页和落地页生成系统 |
-| `ppt-design` | PPT 制作相关 Skill 与指南 |
-| `ppt-style-gallery` | PPT 风格与 HTML 版式速查图册 |
-| `document-reader` | Word、Excel、PPT、PDF、图片与网页读取工具 |
-| `web-design` | 网页设计方法论与设计 Skill |
-| `video-audio` | 视频音频处理工具包 |
-| `voice-notification` | 任务语音通知工具 |
-| `context-reminder` | 对话长度提醒工具 |
-| `writing-humanizer` | 中文去 AI 化写作 Skill |
+| 工具 | 用途 | 推荐等级 |
+|:---:|:---|:---:|
+| `ai-customer-service` | 在线客服机器人参考实现与 Skill | 按需 |
+| `ai-social-media` | AI 新媒体内容与视觉 Skill | 按需 |
+| `ai-marketing` | 营销、定价、竞品与增长 Skill | 按需 |
+| `html-page` | H5、推文页和落地页生成系统 | 建议必装 |
+| `ppt-design` | PPT 制作相关 Skill 与指南 | 按需 |
+| `ppt-style-gallery` | PPT 风格与 HTML 版式速查图册 | 按需 |
+| `document-reader` | Word、Excel、PPT、PDF、图片与网页读取、解析和编辑 | 建议必装 |
+| `web-design` | 网页设计方法论与设计 Skill | 按需 |
+| `video-audio` | 视频音频处理工具包 | 按需 |
+| `voice-notification` | AI 长任务语音提醒 | 条件推荐 |
+| `context-reminder` | 对话长度提醒与 Token 管理 | 建议必装 |
+| `writing-humanizer` | 中文文案、陈述稿和讲稿去 AI 化 | 条件推荐 |
 
 ## 隐私与安全
 

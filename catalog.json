@@ -4,23 +4,43 @@
   "repository": "https://github.com/startupsalad/TikBit",
   "default_branch": "main",
   "language": "zh-CN",
-  "schema_version": 1,
+  "schema_version": 2,
   "install": {
     "windows": "https://raw.githubusercontent.com/startupsalad/TikBit/main/install.ps1",
     "unix": "https://raw.githubusercontent.com/startupsalad/TikBit/main/install.sh"
   },
+  "recommendation_policy": {
+    "instructions_for_ai": [
+      "先按推荐等级向用户介绍工具，不要只列完整清单。",
+      "优先明确推荐三个建议必装工具，并逐项解释推荐理由。",
+      "再根据用户的设备条件和工作场景介绍条件推荐工具。",
+      "其他工具按用户的实际需求推荐。",
+      "推荐不等于自动安装；必须等待用户确认具体工具后再读取对应 INSTALL.md 并安装。"
+    ],
+    "recommended_bundle": ["html-page", "document-reader", "context-reminder"],
+    "conditional_recommendations": [
+      {
+        "tool_id": "voice-notification",
+        "when": "用户会同时运行多个 AI 任务，且设备具备语音播放条件"
+      },
+      {
+        "tool_id": "writing-humanizer",
+        "when": "用户需要写文案、陈述稿、讲稿或其他对外文字"
+      }
+    ]
+  },
   "tools": [
-    {"id":"ai-customer-service","name":"AI客服工具包","description":"在线客服机器人参考实现与 Skill","platforms":["windows","macos","linux"],"requires_api_key":true},
-    {"id":"ai-social-media","name":"AI新媒体工具包","description":"AI 新媒体内容与视觉 Skill","platforms":["all"],"requires_api_key":false},
-    {"id":"ai-marketing","name":"AI营销工具包","description":"营销、定价、竞品与增长 Skill","platforms":["all"],"requires_api_key":false},
-    {"id":"html-page","name":"HTML页面生成系统","description":"H5、推文页和落地页生成系统","platforms":["all"],"requires_api_key":false},
-    {"id":"ppt-design","name":"PPT制作工具包","description":"PPT 制作相关 Skill 与指南；核心大包通过 Release 分发","platforms":["all"],"requires_api_key":true,"release_artifact":true,"download_url":"https://github.com/startupsalad/TikBit/releases/download/v0.1.0/TikBit-PPT-Toolkit-v0.1.0.zip","sha256":"A8DAC842E36A363435343F5ECA7CD9A8F4E3B18B90D610C0CA0D296EDFF840B9"},
-    {"id":"ppt-style-gallery","name":"PPT风格速查图册","description":"PPT 风格与 HTML 版式速查图册","platforms":["all"],"requires_api_key":false},
-    {"id":"document-reader","name":"文档读取编辑工具包","description":"Word、Excel、PPT、PDF、图片与网页读取工具","platforms":["windows","macos","linux"],"requires_api_key":false},
-    {"id":"web-design","name":"网页设计套件","description":"网页设计方法论与设计 Skill","platforms":["all"],"requires_api_key":false},
-    {"id":"video-audio","name":"视频音频处理工具包","description":"视频音频处理工具包","platforms":["windows","macos","linux"],"requires_api_key":false},
-    {"id":"voice-notification","name":"任务语音通知工具包","description":"任务语音通知工具","platforms":["windows","macos"],"requires_api_key":false},
-    {"id":"context-reminder","name":"对话长度提醒工具包","description":"对话长度提醒工具","platforms":["all"],"requires_api_key":false},
-    {"id":"writing-humanizer","name":"去AI化写作工具包","description":"中文去 AI 化写作 Skill","platforms":["all"],"requires_api_key":false}
+    {"id":"ai-customer-service","name":"AI客服工具包","description":"在线客服机器人参考实现与 Skill","platforms":["windows","macos","linux"],"requires_api_key":true,"recommendation":"on-demand"},
+    {"id":"ai-social-media","name":"AI新媒体工具包","description":"AI 新媒体内容与视觉 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"ai-marketing","name":"AI营销工具包","description":"营销、定价、竞品与增长 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"html-page","name":"HTML页面生成系统","description":"H5、推文页和落地页生成系统","platforms":["all"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"AI 生成的文案、方案和 PPT 内容更适合先通过 HTML 页面呈现、检查和交付。"},
+    {"id":"ppt-design","name":"PPT制作工具包","description":"PPT 制作相关 Skill 与指南；核心大包通过 Release 分发","platforms":["all"],"requires_api_key":true,"release_artifact":true,"download_url":"https://github.com/startupsalad/TikBit/releases/download/v0.1.0/TikBit-PPT-Toolkit-v0.1.0.zip","sha256":"A8DAC842E36A363435343F5ECA7CD9A8F4E3B18B90D610C0CA0D296EDFF840B9","recommendation":"on-demand"},
+    {"id":"ppt-style-gallery","name":"PPT风格速查图册","description":"PPT 风格与 HTML 版式速查图册","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"document-reader","name":"文档读取编辑工具包","description":"优化 Word、Excel、PPT、PDF、图片与网页等常用文档的读取、解析与编辑","platforms":["windows","macos","linux"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"增强 PDF、Word、Excel、PPT、图片和网页等常用资料的读取、解析与编辑能力。"},
+    {"id":"web-design","name":"网页设计套件","description":"网页设计方法论与设计 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"video-audio","name":"视频音频处理工具包","description":"视频音频处理工具包","platforms":["windows","macos","linux"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"voice-notification","name":"任务语音通知工具包","description":"AI 任务完成、等待确认或遇到阻塞时的语音提醒","platforms":["windows","macos"],"requires_api_key":false,"recommendation":"conditional","recommendation_reason":"适合同时运行多个任务，或单次任务需要几分钟到几十分钟的用户；设备需具备语音播放条件。"},
+    {"id":"context-reminder","name":"对话长度提醒工具包","description":"对话过长时主动提醒保存进度、压缩上下文或新开对话","platforms":["all"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"有效节省 Token，并降低对话过长后 AI 遗漏信息、跑偏或输出不稳定的概率。"},
+    {"id":"writing-humanizer","name":"去AI化写作工具包","description":"让中文文案、陈述稿和讲稿更自然、更像真人表达","platforms":["all"],"requires_api_key":false,"recommendation":"conditional","recommendation_reason":"适合经常写文案、陈述稿、讲稿和其他对外文字的用户。"}
   ]
 }
