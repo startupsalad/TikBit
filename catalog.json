@@ -12,12 +12,12 @@
   "recommendation_policy": {
     "instructions_for_ai": [
       "先按推荐等级向用户介绍工具，不要只列完整清单。",
-      "优先明确推荐三个建议必装工具，并逐项解释推荐理由。",
+      "优先明确推荐四个建议必装工具，并逐项解释推荐理由。",
       "再根据用户的设备条件和工作场景介绍条件推荐工具。",
       "其他工具按用户的实际需求推荐。",
       "推荐不等于自动安装；必须等待用户确认具体工具后再读取对应 INSTALL.md 并安装。"
     ],
-    "recommended_bundle": ["html-page", "document-reader", "context-reminder"],
+    "recommended_bundle": ["html-page", "document-reader", "context-reminder", "gpt-image"],
     "conditional_recommendations": [
       {
         "tool_id": "voice-notification",
@@ -34,6 +34,7 @@
     {"id":"ai-social-media","name":"AI新媒体工具包","description":"AI 新媒体内容与视觉 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"ai-marketing","name":"AI营销工具包","description":"营销、定价、竞品与增长 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"html-page","name":"HTML页面生成系统","description":"H5、推文页和落地页生成系统","platforms":["all"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"AI 生成的文案、方案和 PPT 内容更适合先通过 HTML 页面呈现、检查和交付。"},
+    {"id":"gpt-image","name":"GPT生图工具包","description":"TikBit AI 工作台对话式 GPT 生图、参考图编辑与批量出图","platforms":["windows","macos"],"requires_api_key":true,"recommendation":"essential","recommendation_reason":"让 AI 在对话过程中直接生成、修改和批量输出图片，不需要用户手动打开图片工作室或敲命令。"},
     {"id":"ppt-design","name":"PPT制作工具包","description":"PPT 制作相关 Skill 与指南；核心大包通过 Release 分发","platforms":["all"],"requires_api_key":true,"release_artifact":true,"download_url":"https://github.com/startupsalad/TikBit/releases/download/v0.1.0/TikBit-PPT-Toolkit-v0.1.0.zip","sha256":"A8DAC842E36A363435343F5ECA7CD9A8F4E3B18B90D610C0CA0D296EDFF840B9","recommendation":"on-demand"},
     {"id":"ppt-style-gallery","name":"PPT风格速查图册","description":"PPT 风格与 HTML 版式速查图册","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"document-reader","name":"文档读取编辑工具包","description":"优化 Word、Excel、PPT、PDF、图片与网页等常用文档的读取、解析与编辑","platforms":["windows","macos","linux"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"增强 PDF、Word、Excel、PPT、图片和网页等常用资料的读取、解析与编辑能力。"},

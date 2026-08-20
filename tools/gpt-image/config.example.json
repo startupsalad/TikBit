@@ -1,0 +1,10 @@
+{
+  "base_url": "https://tikbit.ai/v1",
+  "api_key": "",
+  "image_model": "gpt-image-2",
+  "output_dir": "",
+  "read_timeout": "300",
+  "max_retries": "5",
+  "gateway_timeout_secs": "90",
+  "gateway_max_retries": "2"
+}

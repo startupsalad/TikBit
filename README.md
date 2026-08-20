@@ -23,6 +23,7 @@ https://github.com/startupsalad/TikBit
 | `html-page` | AI 生成的文案、方案和 PPT 内容，更适合先通过 HTML 页面呈现、检查和交付。 |
 | `document-reader` | 增强 PDF、Word、Excel、PPT、图片和网页等常用资料的读取、解析与编辑能力。 |
 | `context-reminder` | 有效节省 Token，并降低对话过长后 AI 遗漏信息、跑偏或输出不稳定的概率。 |
+| `gpt-image` | 让 TikBit AI 在对话中直接生成、修改和批量输出图片；图片工作室仍用于用户手动操作单张图片。 |
 
 ### 条件推荐
 
@@ -57,6 +58,7 @@ curl -fsSL https://raw.githubusercontent.com/startupsalad/TikBit/main/install.sh
 | `ai-social-media` | AI 新媒体内容与视觉 Skill | 按需 |
 | `ai-marketing` | 营销、定价、竞品与增长 Skill | 按需 |
 | `html-page` | H5、推文页和落地页生成系统 | 建议必装 |
+| `gpt-image` | TikBit AI 工作台对话式 GPT 生图、参考图编辑和批量出图 | 建议必装 |
 | `ppt-design` | PPT 制作相关 Skill 与指南 | 按需 |
 | `ppt-style-gallery` | PPT 风格与 HTML 版式速查图册 | 按需 |
 | `document-reader` | Word、Excel、PPT、PDF、图片与网页读取、解析和编辑 | 建议必装 |
