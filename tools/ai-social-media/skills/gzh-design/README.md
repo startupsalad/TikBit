@@ -32,6 +32,7 @@
 - **不掉格式**：所有样式内联、文字 `<span leaf="">` 包裹，规避 `<style>/<div>/class/grid/position` 等公众号会过滤的写法。
 - **双关卡质量校验**：`component_lint.py`（组件库源头）+ `validate_gzh_html.py`（最终产物），构成可复现的「改→验→修」闭环。
 - **一键复制**：生成带「复制」按钮的预览页，点一下把富文本复制到剪贴板，直接粘进公众号，免手动全选。
+- **本地图片内嵌**：`scripts/embed_images.py` 可把相对路径图片转成 Base64，图片随富文本一起粘进公众号，无需先上传服务器或素材库。
 
 ## 👀 效果预览
 
@@ -133,6 +134,8 @@ git clone https://github.com/isjiamu/gzh-design-skill.git ~/.claude/skills/gzh-d
 5. **校验** — 跑 `validate_gzh_html.py`，ERROR 清零才交付。
 6. **输出** — 生成干净正文 + 带「复制」按钮的预览页；浏览器打开预览页点右上角「复制到公众号」，再去编辑器粘贴即可（免手动全选）。
 
+> 文章含本地配图时，先运行 `python scripts/embed_images.py article.html article_base64.html`，再用 Chrome/Edge 打开 `article_base64.html` 复制。远程图片和已有 Base64 会被脚本原样保留。
+
 ## 🧩 公众号平台限制（已内置兜底）
 
 生成的 HTML 严格遵守：禁 `<style>/<script>/<div>`、`class/id`、`position:fixed/absolute/sticky`、`float`、`@media/@keyframes`、`display:grid`、CSS 变量、外部字体；样式全部内联；所有文字用 `<span leaf="">` 包裹。这些由校验脚本确定性检查，而非靠模型自觉。
@@ -172,7 +175,8 @@ gzh-design/
 │   └── eval-cases.md           # 触发用例 + 可验证循环
 ├── scripts/
 │   ├── validate_gzh_html.py    # 产物合规校验
-│   └── component_lint.py       # 组件库源头检查
+│   ├── component_lint.py       # 组件库源头检查
+│   └── embed_images.py         # 本地图片转 Base64 内嵌
 ├── assets/
 │   ├── sample-article.md       # 演示输入
 │   └── theme-previews/         # 主题生成器产出的区块库预览

@@ -7,6 +7,8 @@ description: 微信公众号文章排版引擎，将 Markdown 转换为可直接
 
 把一篇 Markdown 文章转换为可直接复制粘贴进微信公众号编辑器、且粘贴后样式不丢失的 HTML。
 
+图片与复制的兼容细则见 [references/wechat-compatibility.md](references/wechat-compatibility.md)。文章包含本地图片时，先用 `scripts/embed_images.py` 生成 Base64 版本，再从 Chrome/Edge 的真实页面复制。
+
 核心资产是 `references/` 下的**主题组件库**（每套一个主题：设计变量 + 各组件完整 HTML + 模板骨架 + 映射规则）外加 1 套**通用增量库**（代码块 / 图片·GIF / 小标签标题，所有主题共用）。主题清单以 `references/theme-index.md` 为单一来源。本 SKILL.md 只负责流程与决策，**具体 HTML 代码一律从组件库取，不要凭记忆手写**。
 
 ## 工作流
@@ -94,6 +96,12 @@ description: 微信公众号文章排版引擎，将 Markdown 转换为可直接
    ```
    产出 `{...}_预览.html`——浏览器打开后右上角有「复制到公众号」按钮，点一下即把渲染后的富文本复制到剪贴板（等价 Ctrl+A/Ctrl+C），再到公众号编辑器 Ctrl/⌘+V 粘贴。按钮和脚本只在预览外壳里、**不在被复制的 section 内**，所以粘到公众号的仍是干净合规正文。
 3. 告知用户：**打开 `{...}_预览.html` → 点右上角「复制」→ 公众号编辑器粘贴**；并给出干净正文文件路径作为兜底。附校验脚本结论（已通过 / 剩余 warning）。
+
+### 图片交付检查
+
+- 本地图片：`python scripts/embed_images.py input.html output.html`，确认正文 `<img>` 的本地相对路径为 0，`data:image` 数量与需内嵌的图片数量一致。
+- 公网图片：确认 HTTPS 地址可访问且无防盗链；粘贴后在后台检查图片是否真正进入。
+- 预览页复制必须从 Chrome/Edge 真实浏览器进行；不要从 VS Code 预览面板复制。
 
 ## 生成时的智能处理（这些是本 skill 的特色，必须做）
 

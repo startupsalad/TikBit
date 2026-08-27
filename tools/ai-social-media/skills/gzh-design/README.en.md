@@ -32,6 +32,7 @@ A layout Skill for AI agents (Claude Code / Codex / Cursor …). You write Markd
 - **Paste-safe**: all styles inlined, every text node wrapped in `<span leaf="">`, avoiding `<style>/<div>/class/grid/position` that WeChat strips.
 - **Two-gate quality checks**: `component_lint.py` (library source) + `validate_gzh_html.py` (final output) form a reproducible edit → verify → fix loop.
 - **One-click copy**: a preview page with a **Copy** button — click to copy the rich text and paste straight into WeChat, no manual select-all.
+- **Local image embedding**: `scripts/embed_images.py` converts relative image paths to Base64 data URIs so images travel with the rich text when pasted.
 
 ## ✅ Good for / ❌ Not for
 
@@ -118,6 +119,8 @@ Scan to join the **official WeChat Work group** (dynamic QR, auto-invite) — ch
 4. **Assemble HTML** — from real components; apply numbering, underlines, full-width punctuation, signature.
 5. **Validate** — run `validate_gzh_html.py`, ship only at 0 ERROR.
 6. **Output** — a clean fragment + a preview page with a **Copy** button; open it, click "Copy to WeChat", then paste into the editor (no manual select-all).
+
+For local images, run `python scripts/embed_images.py article.html article_base64.html` first, then open the output in Chrome/Edge and copy from the real browser page. Remote URLs and existing Base64 images are preserved.
 
 ## 🧩 Platform limits (enforced)
 

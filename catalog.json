@@ -31,7 +31,7 @@
   },
   "tools": [
     {"id":"ai-customer-service","name":"AI客服工具包","description":"在线客服机器人参考实现与 Skill","platforms":["windows","macos","linux"],"requires_api_key":true,"recommendation":"on-demand"},
-    {"id":"ai-social-media","name":"AI新媒体工具包","description":"AI 新媒体内容与视觉 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"ai-social-media","name":"AI新媒体工具包","description":"AI 新媒体内容与视觉 Skill，含公众号排版、图片内嵌和一键复制","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"ai-marketing","name":"AI营销工具包","description":"营销、定价、竞品与增长 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"html-page","name":"HTML页面生成系统","description":"H5、推文页和落地页生成系统","platforms":["all"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"AI 生成的文案、方案和 PPT 内容更适合先通过 HTML 页面呈现、检查和交付。"},
     {"id":"gpt-image","name":"GPT生图工具包","description":"TikBit AI 工作台对话式 GPT 生图、参考图编辑与批量出图","platforms":["windows","macos"],"requires_api_key":true,"recommendation":"essential","recommendation_reason":"让 AI 在对话过程中直接生成、修改和批量输出图片，不需要用户手动打开图片工作室或敲命令。"},

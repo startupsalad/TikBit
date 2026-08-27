@@ -6,7 +6,7 @@
 
 - `SKILL.md` — 排版工作流主文档（Agent 入口）
 - `references/` — 6 套主题组件库 + 通用增量库 + 主题索引 + 主题生成器 + 触发用例
-- `scripts/` — 两个校验脚本（见下方「可验证循环」）
+- `scripts/` — 校验、预览和本地图片内嵌脚本（见下方「可验证循环」）
 - `assets/` — 演示输入文章
 - `docs/gallery/` — 主题风格的浏览器预览
 
@@ -20,10 +20,14 @@ python3 scripts/component_lint.py .
 
 # 产物关：用改动后的 skill 排版 assets/sample-article.md，再校验产物
 python3 scripts/validate_gzh_html.py <生成的.html>
+
+# 若文章含本地图片，先生成 Base64 版本再从浏览器复制
+python3 scripts/embed_images.py <输入.html> <输出.html>
 ```
 
 - `component_lint.py` 须 **0 ERROR**
 - `validate_gzh_html.py` 须 **0 ERROR、半角标点 0 WARN**
+- `embed_images.py` 的单元测试须通过：`python3 -m unittest discover -s tests -v`
 
 细节见 `references/eval-cases.md` 的「维护 · 可验证循环」一节。
 
