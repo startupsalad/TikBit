@@ -60,7 +60,7 @@
     {"id":"ppt-style-gallery","name":"PPT风格速查图册","description":"PPT 风格与 HTML 版式速查图册","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"document-reader","name":"文档读取编辑工具包","description":"优化 Word、Excel、PPT、PDF、图片与网页等常用文档的读取、解析与编辑","platforms":["windows","macos","linux"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"增强 PDF、Word、Excel、PPT、图片和网页等常用资料的读取、解析与编辑能力。"},
     {"id":"web-design","name":"网页设计套件","description":"网页设计方法论与设计 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
-    {"id":"video-audio","name":"视频音频处理工具包","description":"视频音频处理工具包","platforms":["windows","macos","linux"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"video-audio","name":"视频音频处理工具包","description":"视频下载、抽帧、语音转文字。本地转写不需要密钥；watch 的云端转写需自备 Groq 或 OpenAI 密钥，不能复用工作台令牌（中转站不提供语音转写）","platforms":["windows","macos","linux"],"requires_api_key":true,"api_key_source":"user_provided","recommendation":"on-demand"},
     {"id":"voice-notification","name":"任务语音通知工具包","description":"AI 任务完成、等待确认或遇到阻塞时的语音提醒","platforms":["windows","macos"],"requires_api_key":false,"recommendation":"conditional","recommendation_reason":"适合同时运行多个任务，或单次任务需要几分钟到几十分钟的用户；设备需具备语音播放条件。"},
     {"id":"context-reminder","name":"对话长度提醒工具包","description":"对话过长时主动提醒保存进度、压缩上下文或新开对话","platforms":["all"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"有效节省 Token，并降低对话过长后 AI 遗漏信息、跑偏或输出不稳定的概率。"},
     {"id":"writing-humanizer","name":"去AI化写作工具包","description":"让中文文案、陈述稿和讲稿更自然、更像真人表达","platforms":["all"],"requires_api_key":false,"recommendation":"conditional","recommendation_reason":"适合经常写文案、陈述稿、讲稿和其他对外文字的用户。"}
