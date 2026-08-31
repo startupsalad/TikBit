@@ -41,7 +41,7 @@ node -v
 
 > 你有原始的「网页设计套件」安装包吗？
 > - 如果有 → 告诉我路径
-> - 如果没有 → 去找熊哥或大龙要一份
+> - 如果没有 → 找创业沙拉 | TikBit 要一份（startupsalad.com）
 
 假设用户提供了路径：`/path/to/StartupSalad-AI-WebDesign/网页设计套件`
 

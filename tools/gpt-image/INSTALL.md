@@ -24,7 +24,15 @@ macOS:  ~/.tikbit/gpt-image/gpt-image.js
 
 4. 将本目录 `SKILL.md` 注册到 TikBit AI 工作台的工具/Skill 目录，使后续对话可按触发规则自动调用。不要注册到其他 AI 客户端的全局配置。
 
-5. 首次需要生图时再配置 API。优先使用环境变量 `GPT_API_KEY`、`GPT_BASE_URL`；也可由 AI 将用户提供的值写入本机 `config.json`。不得在聊天记录、仓库或日志中回显完整密钥。
+5. 配置 API。本工具走创业沙拉 TikBit 中转站，**优先复用工作台已有的令牌，不要向用户索取密钥**：
+
+   - 先读环境变量 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL`；取不到时读本机 Claude 配置 `settings.json` 的 `env` 字段（Windows 在 `%USERPROFILE%/.claude/settings.json`，macOS 在 `~/.claude/settings.json`）。
+   - 确认 `ANTHROPIC_BASE_URL` 的主机是 `tikbit.ai` 才可复用。指向官方 Anthropic 端点的令牌对生图接口无效，此时请用户自行提供 TikBit 令牌。
+   - 把令牌写入 `config.json` 的 `api_key`，并把 `base_url` 写成 `https://tikbit.ai/v1`。工具会在其后拼接 `/images/generations`，**缺少 `/v1` 会 404**。
+   - 复用成功后只回报“已复用工作台令牌”，不得在聊天记录、仓库或日志中回显完整密钥。
+   - 告诉用户：生图消耗的是工作台同一份额度。
+
+   工作台令牌不可用时，才退回让用户提供；也支持环境变量 `GPT_API_KEY`、`GPT_BASE_URL` 覆盖 `config.json`。
 
 6. 安装验证：运行无密钥检查（不会发起网络请求）：
 
@@ -49,9 +57,9 @@ Windows 请把 `~/.tikbit` 展开为用户目录，或使用 PowerShell 可解�
 ```json
 {
   "base_url": "https://tikbit.ai/v1",
-  "api_key": "用户自己的密钥",
+  "api_key": "复用工作台令牌或用户自备的 TikBit 令牌",
   "image_model": "gpt-image-2"
 }
 ```
 
-`config.example.json` 只有空密钥示例；实际密钥由用户自行提供和保管。
+`config.example.json` 只有空密钥示例；仓库不含任何真实密钥。密钥来源优先级：工作台已配置的 TikBit 令牌 > 用户自行提供。

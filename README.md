@@ -10,7 +10,9 @@
 https://github.com/startupsalad/TikBit
 ```
 
-请先读取 [`catalog.json`](catalog.json) 中的 `recommendation_policy` 和完整工具清单。先按“建议必装 → 条件推荐 → 其他按需”的顺序向用户介绍并解释理由，等待用户确认具体工具后，再读取对应目录下的 `INSTALL.md` 并按当前操作系统执行安装。安装前先确认目标路径和依赖；API Key 由用户自行在本机配置，不要索取、回显或上传用户的密钥。
+请先读取 [`catalog.json`](catalog.json) 中的 `recommendation_policy`、`api_key_policy` 和完整工具清单。先检查本机已安装状态，再按“建议必装 → 条件推荐 → 其他按需”的顺序向用户介绍并解释理由，已安装的直接标注为已安装。等待用户确认具体工具后，再读取对应目录下的 `INSTALL.md` 并按当前操作系统执行安装。安装前先确认目标路径和依赖。
+
+密钥按 `api_key_policy` 处理：`api_key_source` 为 `workstation_relay` 的工具（`gpt-image`、`ppt-design`）直接复用本机 TikBit 工作台已配置的令牌，**不要向用户索取密钥**；`user_provided` 的工具（`ai-customer-service`）运行在用户自己的服务器上，必须由用户自备令牌，不要代填本机令牌。任何情况下都不回显或上传用户的密钥。
 
 ## 安装建议
 
@@ -54,7 +56,7 @@ curl -fsSL https://raw.githubusercontent.com/startupsalad/TikBit/main/install.sh
 
 | 工具 | 用途 | 推荐等级 |
 |:---:|:---|:---:|
-| `ai-customer-service` | 在线客服机器人参考实现与 Skill | 按需 |
+| `ai-customer-service` | 在线客服机器人（自部署）：给自己网站加 AI 问答窗口，需自备服务器和令牌 | 按需 |
 | `ai-social-media` | AI 新媒体内容与视觉 Skill | 按需 |
 | `ai-marketing` | 营销、定价、竞品与增长 Skill | 按需 |
 | `html-page` | H5、推文页和落地页生成系统 | 建议必装 |

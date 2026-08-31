@@ -22,7 +22,7 @@ description: 为网站部署基于 Claude API 的在线客服机器人。基于�
 - `frontend/chatbot-widget.js` — 自注入聊天窗口，一行 `<script>` 引入，发 `{q}` 收 `{answer}` 单轮。
 - `deploy/` — Dockerfile（装 claude CLI + 预种免 onboarding）+ docker-compose + Nginx 反代 + 一键部署脚本。
 
-> 架构复刻了创业沙拉自己 ai.salad.co/guide 跑通的在线答疑那套：后端不碰密钥，靠容器内 claude CLI（配 tikbit）完成鉴权。
+> 架构复刻了创业沙拉自己 startupsalad.com/guide 跑通的在线答疑那套：后端不碰密钥，靠容器内 claude CLI（配 tikbit）完成鉴权。
 
 配套文档：`docs/[AI客服工具包] 部署手册·公开版.md`（完整步骤）、`知识库准备指南.md`、`踩坑与避坑手册.md`、`【安全须知】API密钥与鉴权基线.md`。
 

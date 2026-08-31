@@ -32,7 +32,7 @@ AI 会自动：
 - 配置 CLAUDE.md
 - 安装 Python 依赖（可选）
 
-**⚠️ 重要**：如果你要用 GPT 生图功能（A 模式），需要自己配置 OpenAI API 密钥。其他模式（B/C/D/E/F/G）不需要密钥。详见 `README_AI_INSTALL.md` 第 4 步。
+**⚠️ 重要**：GPT 生图功能（A 模式）直接复用你 TikBit 工作台的令牌，不用另外申请 OpenAI 密钥，生图消耗工作台同一份额度。其他模式（B/C/D/E/F/G）不需要密钥。详见 `README_AI_INSTALL.md` 第 4 步。
 
 ### 第 2 步：使用
 

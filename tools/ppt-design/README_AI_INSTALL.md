@@ -157,29 +157,36 @@ fi
 - `openai` — A 模式（GPT-Image 生图）
 - `requests` — HTTP 请求
 
-**⚠️ 重要：GPT API 密钥配置**
+**⚠️ 重要：GPT API 密钥配置（复用工作台令牌，不要向用户索取密钥）**
 
-本工具包的 GPT 工具脚本**不包含 API 密钥**（安全原因）。
+本工具包的 GPT 工具脚本**不包含 API 密钥**（安全原因）。A 模式生图走创业沙拉 TikBit 中转站，和 `gpt-image` 工具包同一套脚本、同一个接口，**不需要用户另外申请 OpenAI 密钥**。
 
-用户需要自己配置：
+**第一步：复用工作台已有令牌**
 
-**方式 1：环境变量（推荐）**
-```bash
-export GPT_API_KEY="用户自己的密钥"
-export GPT_BASE_URL="https://api.openai.com/v1"
-```
+1. 读环境变量 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL`；取不到时读本机 Claude 配置 `settings.json` 的 `env` 字段（Windows `%USERPROFILE%/.claude/settings.json`，macOS `~/.claude/settings.json`）。
+2. 确认 `ANTHROPIC_BASE_URL` 主机是 `tikbit.ai` 才可复用。指向官方 Anthropic 端点的令牌对生图接口无效，此时请用户自行提供 TikBit 令牌。
+3. 不得在聊天记录或日志中回显完整密钥，只回报“已复用工作台令牌”。
 
-**方式 2：配置文件**
-在工具脚本所在目录创建 `gpt_config.md`，写入：
+**第二步：写入配置文件**
+
+写进工具脚本所在目录的 `GPT配置.md`：
 ```markdown
 ---
-api_key: 用户自己的密钥
-base_url: https://api.openai.com/v1
+base_url: https://tikbit.ai/v1
+api_key: 复用的工作台令牌
 image_model: gpt-image-2
 ---
 ```
 
-**告诉用户**："GPT 生图功能需要你自己的 OpenAI API 密钥。如果不用 GPT 生图（A 模式），可以跳过这一步，其他模式（B/C/D/E/F/G）都不需要密钥。"
+> ⚠️ 两个必须写对的点：文件名只能是 `GPT配置.md`（脚本里写死 `CONFIG_FILE = SCRIPT_DIR / "GPT配置.md"`，叫 `gpt_config.md` 读不到）；`base_url` 必须带 `/v1`（脚本会拼 `/images/generations`，缺 `/v1` 会 404）。
+
+也支持环境变量覆盖：
+```bash
+export GPT_API_KEY="TikBit 令牌"
+export GPT_BASE_URL="https://tikbit.ai/v1"
+```
+
+**告诉用户**："GPT 生图直接用你工作台的 TikBit 令牌，不用另外配密钥，生图消耗的是同一份额度。如果不用 GPT 生图（A 模式），其他模式（B/C/D/E/F/G）都不需要密钥。"
 
 ---
 

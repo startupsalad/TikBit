@@ -12,7 +12,7 @@
 
 包含内容：
 - **skill**：`skills/在线客服机器人/SKILL.md`（AI 定制生成用的方法论）
-- **参考实现**（架构复刻创业沙拉 ai.salad.co/guide 跑通的在线答疑）：
+- **参考实现**（架构复刻创业沙拉 startupsalad.com/guide 跑通的在线答疑）：
   - `backend/` — Node.js 原生后端（零依赖），`spawn` 调本机 claude CLI，含单 IP 限流、每日算力预算封顶、并发上限、知识库自动加载
   - `frontend/` — 自注入聊天窗口，一行 `<script>` 引入，发 `{q}` 收 `{answer}` 单轮
   - `deploy/` — Dockerfile（装 claude CLI + 预种免 onboarding）+ docker-compose + Nginx 反代 + 一键部署/更新/日志脚本

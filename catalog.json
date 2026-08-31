@@ -15,6 +15,8 @@
       "优先明确推荐四个建议必装工具，并逐项解释推荐理由。",
       "再根据用户的设备条件和工作场景介绍条件推荐工具。",
       "其他工具按用户的实际需求推荐。",
+      "介绍前先检查本机已安装状态，已安装的直接标注为已安装，不要重复推荐安装。",
+      "按 api_key_policy 处理密钥：api_key_source 为 workstation_relay 的工具直接复用本机工作台令牌，不要向用户索取密钥。",
       "推荐不等于自动安装；必须等待用户确认具体工具后再读取对应 INSTALL.md 并安装。"
     ],
     "recommended_bundle": ["html-page", "document-reader", "context-reminder", "gpt-image"],
@@ -29,13 +31,32 @@
       }
     ]
   },
+  "api_key_policy": {
+    "workstation_relay": {
+      "meaning": "复用本机 TikBit 工作台已配置的令牌，用户不需要另外提供密钥。",
+      "steps_for_ai": [
+        "先读环境变量 ANTHROPIC_AUTH_TOKEN 和 ANTHROPIC_BASE_URL；取不到时读本机 Claude 配置文件 settings.json 的 env 字段。",
+        "确认 ANTHROPIC_BASE_URL 的主机是 tikbit.ai 才可复用；指向官方 Anthropic 端点的令牌对生图接口无效，此时请用户自行提供 TikBit 令牌。",
+        "写入工具配置时 base_url 必须补成 https://tikbit.ai/v1，工具会在其后拼接 /images/generations，缺少 /v1 会 404。",
+        "全程不在对话、日志或仓库中回显完整密钥，只回报是否复用成功。",
+        "告知用户：生图消耗的是工作台同一份额度。"
+      ]
+    },
+    "user_provided": {
+      "meaning": "工具运行在用户自己的服务器或第三方环境，必须由用户自备令牌。",
+      "steps_for_ai": [
+        "不要复用本机工作台令牌，也不要代替用户把本机令牌写入远端服务器配置。",
+        "引导用户自行到 tikbit.ai 后台获取令牌并填入其自有环境的配置文件。"
+      ]
+    }
+  },
   "tools": [
-    {"id":"ai-customer-service","name":"AI客服工具包","description":"在线客服机器人参考实现与 Skill","platforms":["windows","macos","linux"],"requires_api_key":true,"recommendation":"on-demand"},
+    {"id":"ai-customer-service","name":"在线客服机器人（自部署）","description":"给自己的网站加一个 AI 问答窗口；含参考实现、部署脚本与 Skill，需自备服务器","platforms":["windows","macos","linux"],"requires_api_key":true,"api_key_source":"user_provided","recommendation":"on-demand"},
     {"id":"ai-social-media","name":"AI新媒体工具包","description":"AI 新媒体内容与视觉 Skill，含公众号排版、图片内嵌和一键复制","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"ai-marketing","name":"AI营销工具包","description":"营销、定价、竞品与增长 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"html-page","name":"HTML页面生成系统","description":"H5、推文页和落地页生成系统","platforms":["all"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"AI 生成的文案、方案和 PPT 内容更适合先通过 HTML 页面呈现、检查和交付。"},
-    {"id":"gpt-image","name":"GPT生图工具包","description":"TikBit AI 工作台对话式 GPT 生图、参考图编辑与批量出图","platforms":["windows","macos"],"requires_api_key":true,"recommendation":"essential","recommendation_reason":"让 AI 在对话过程中直接生成、修改和批量输出图片，不需要用户手动打开图片工作室或敲命令。"},
-    {"id":"ppt-design","name":"PPT制作工具包","description":"PPT 制作相关 Skill 与指南；核心大包通过 Release 分发","platforms":["all"],"requires_api_key":true,"release_artifact":true,"download_url":"https://github.com/startupsalad/TikBit/releases/download/v0.1.0/TikBit-PPT-Toolkit-v0.1.0.zip","sha256":"A8DAC842E36A363435343F5ECA7CD9A8F4E3B18B90D610C0CA0D296EDFF840B9","recommendation":"on-demand"},
+    {"id":"gpt-image","name":"GPT生图工具包","description":"TikBit AI 工作台对话式 GPT 生图、参考图编辑与批量出图","platforms":["windows","macos"],"requires_api_key":true,"api_key_source":"workstation_relay","recommendation":"essential","recommendation_reason":"让 AI 在对话过程中直接生成、修改和批量输出图片，不需要用户手动打开图片工作室或敲命令。"},
+    {"id":"ppt-design","name":"PPT制作工具包","description":"PPT 制作相关 Skill 与指南；核心大包通过 Release 分发。仅 A 模式（GPT 生图）需要密钥，B/C/E/F1/G 模式不需要","platforms":["all"],"requires_api_key":true,"api_key_source":"workstation_relay","release_artifact":true,"download_url":"https://github.com/startupsalad/TikBit/releases/download/v0.1.0/TikBit-PPT-Toolkit-v0.1.0.zip","sha256":"A8DAC842E36A363435343F5ECA7CD9A8F4E3B18B90D610C0CA0D296EDFF840B9","recommendation":"on-demand"},
     {"id":"ppt-style-gallery","name":"PPT风格速查图册","description":"PPT 风格与 HTML 版式速查图册","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"document-reader","name":"文档读取编辑工具包","description":"优化 Word、Excel、PPT、PDF、图片与网页等常用文档的读取、解析与编辑","platforms":["windows","macos","linux"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"增强 PDF、Word、Excel、PPT、图片和网页等常用资料的读取、解析与编辑能力。"},
     {"id":"web-design","name":"网页设计套件","description":"网页设计方法论与设计 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},

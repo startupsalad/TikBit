@@ -17,23 +17,34 @@
 cfg = {"base_url": "", "api_key": "", "image_model": "gpt-image-2"}
 ```
 
-**用户需要自己配置密钥**：
+**密钥来源：复用 TikBit 工作台令牌**
 
-**方式 1：环境变量（推荐）**
-```bash
-export GPT_API_KEY="用户自己的密钥"
-export GPT_BASE_URL="https://api.openai.com/v1"
-```
+A 模式的生图走创业沙拉 TikBit 中转站，和 `gpt-image` 工具包是同一套脚本、同一个接口。**不需要另外申请 OpenAI 密钥**，AI 安装时会复用工作台已配置的令牌：
 
-**方式 2：配置文件**
-在脚本所在目录创建 `gpt_config.md`：
+- 读环境变量 `ANTHROPIC_AUTH_TOKEN`，或本机 Claude 配置 `settings.json` 的 `env` 字段
+- 确认 `ANTHROPIC_BASE_URL` 主机是 `tikbit.ai` 才可复用
+- 生图消耗的是工作台同一份额度
+
+**方式 1：配置文件（脚本的唯一配置源）**
+
+在脚本所在目录的 `GPT配置.md` 写入 YAML frontmatter：
 ```markdown
 ---
-api_key: 用户自己的密钥
-base_url: https://api.openai.com/v1
+base_url: https://tikbit.ai/v1
+api_key: 复用的工作台令牌
 image_model: gpt-image-2
 ---
 ```
+
+> ⚠️ 文件名必须是 `GPT配置.md`。脚本里写死的是 `CONFIG_FILE = SCRIPT_DIR / "GPT配置.md"`，叫 `gpt_config.md` 读不到，会一直提示没配 API。
+
+**方式 2：环境变量（覆盖配置文件）**
+```bash
+export GPT_API_KEY="TikBit 令牌"
+export GPT_BASE_URL="https://tikbit.ai/v1"
+```
+
+> `base_url` 必须带 `/v1`。脚本会在其后拼接 `/images/generations`，缺少 `/v1` 会 404。
 
 ### Space Multi Design PPT（G 引擎）
 
@@ -73,9 +84,9 @@ image_model: gpt-image-2
 - 其他 7 种模式（B/C/D/E/F1/F2/G）都能正常使用
 
 **如果你要用 GPT 生图（A 模式）**：
-- 需要自己的 OpenAI API 密钥
-- 按上述方式 1 或方式 2 配置
-- AI 会在需要时自动调用
+- 不用另找 OpenAI 密钥，AI 会复用你 TikBit 工作台的令牌
+- 工作台没配令牌时，去 tikbit.ai 后台「令牌管理」取一个，按上述方式 1 填进 `GPT配置.md`
+- 配好后 AI 会在需要时自动调用，生图走工作台同一份额度
 
 ---
 
