@@ -1,34 +1,31 @@
 {
   "name": "TikBit 工具库",
-  "publisher": "创业沙拉 | 立即行动科技",
+  "publisher": "创业沙拉 | TikBit",
   "repository": "https://github.com/startupsalad/TikBit",
   "default_branch": "main",
   "language": "zh-CN",
-  "schema_version": 2,
+  "schema_version": 3,
   "install": {
     "windows": "https://raw.githubusercontent.com/startupsalad/TikBit/main/install.ps1",
     "unix": "https://raw.githubusercontent.com/startupsalad/TikBit/main/install.sh"
   },
   "recommendation_policy": {
+    "levels": ["essential", "recommended", "on-demand"],
+    "level_labels": {"essential": "必装", "recommended": "推荐", "on-demand": "按需"},
     "instructions_for_ai": [
-      "先按推荐等级向用户介绍工具，不要只列完整清单。",
-      "优先明确推荐四个建议必装工具，并逐项解释推荐理由。",
-      "再根据用户的设备条件和工作场景介绍条件推荐工具。",
-      "其他工具按用户的实际需求推荐。",
-      "介绍前先检查本机已安装状态，已安装的直接标注为已安装，不要重复推荐安装。",
-      "按 api_key_policy 处理密钥：api_key_source 为 workstation_relay 的工具直接复用本机工作台令牌，不要向用户索取密钥。",
-      "推荐不等于自动安装；必须等待用户确认具体工具后再读取对应 INSTALL.md 并安装。"
+      "只使用三档推荐等级：必装、推荐、按需；不要再使用条件推荐或建议必装等第四种说法。",
+      "先检查本机已安装状态：包括对应 Skill 目录、工具配置目录、安装标记和已存在的行为指令块。已安装且可用的工具直接标注为已安装，不要重复安装或重复添加钩子。",
+      "先向用户介绍必装工具，再根据设备和工作场景介绍推荐工具，最后按具体任务介绍按需工具。",
+      "推荐不等于自动安装；等待用户确认具体工具后，再读取对应目录的 INSTALL.md 并按当前操作系统执行。",
+      "底层 Skill 包（must-skills）与工作台旧版必装 Skill 包可能已经存在；检测到 docx、xlsx、pptx、pdf、kb-retriever、skill-creator、defuddle 已安装时不要重复装。",
+      "对话长度提醒（context-reminder）已集成到插件，不在本工具库目录中推荐或安装。",
+      "微信个人/企业接入是一个工具包，按需读取 wechat-ai-deployment/ 下的 personal 或 enterprise 手册，不要把两套手册拆成两个工具。",
+      "按 api_key_policy 处理密钥：api_key_source 为 workstation_relay 的工具复用本机工作台令牌；user_provided 的工具必须由用户自行提供，任何情况下不回显完整密钥。"
     ],
-    "recommended_bundle": ["html-page", "document-reader", "context-reminder", "gpt-image"],
-    "conditional_recommendations": [
-      {
-        "tool_id": "voice-notification",
-        "when": "用户会同时运行多个 AI 任务，且设备具备语音播放条件"
-      },
-      {
-        "tool_id": "writing-humanizer",
-        "when": "用户需要写文案、陈述稿、讲稿或其他对外文字"
-      }
+    "recommended_bundle": ["must-skills", "html-page", "document-reader", "gpt-image"],
+    "recommended_tools": [
+      {"tool_id": "voice-notification", "when": "用户会同时运行多个 AI 任务，或经常需要等待几分钟以上，且设备具备语音播放条件"},
+      {"tool_id": "writing-humanizer", "when": "用户需要写文案、陈述稿、讲稿或其他对外文字"}
     ]
   },
   "api_key_policy": {
@@ -43,26 +40,31 @@
       ]
     },
     "user_provided": {
-      "meaning": "工具运行在用户自己的服务器或第三方环境，必须由用户自备令牌。",
+      "meaning": "工具运行在用户自己的服务器或第三方环境，必须由用户自备令牌或平台凭证。",
       "steps_for_ai": [
         "不要复用本机工作台令牌，也不要代替用户把本机令牌写入远端服务器配置。",
-        "引导用户自行到 tikbit.ai 后台获取令牌并填入其自有环境的配置文件。"
+        "引导用户自行到 tikbit.ai 或对应平台获取凭证，并填入其自有环境的配置文件。"
       ]
     }
   },
   "tools": [
-    {"id":"ai-customer-service","name":"在线客服机器人（自部署）","description":"给自己的网站加一个 AI 问答窗口；含参考实现、部署脚本与 Skill，需自备服务器","platforms":["windows","macos","linux"],"requires_api_key":true,"api_key_source":"user_provided","recommendation":"on-demand"},
-    {"id":"ai-social-media","name":"AI新媒体工具包","description":"AI 新媒体内容与视觉 Skill，含公众号排版、图片内嵌和一键复制","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
-    {"id":"ai-marketing","name":"AI营销工具包","description":"营销、定价、竞品与增长 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
-    {"id":"html-page","name":"HTML页面生成系统","description":"H5、推文页和落地页生成系统","platforms":["all"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"AI 生成的文案、方案和 PPT 内容更适合先通过 HTML 页面呈现、检查和交付。"},
-    {"id":"gpt-image","name":"GPT生图工具包","description":"TikBit AI 工作台对话式 GPT 生图、参考图编辑与批量出图","platforms":["windows","macos"],"requires_api_key":true,"api_key_source":"workstation_relay","recommendation":"essential","recommendation_reason":"让 AI 在对话过程中直接生成、修改和批量输出图片，不需要用户手动打开图片工作室或敲命令。"},
-    {"id":"ppt-design","name":"PPT制作工具包","description":"PPT 制作相关 Skill 与指南；核心大包通过 Release 分发。仅 A 模式（GPT 生图）需要密钥，B/C/E/F1/G 模式不需要","platforms":["all"],"requires_api_key":true,"api_key_source":"workstation_relay","release_artifact":true,"download_url":"https://github.com/startupsalad/TikBit/releases/download/v0.1.0/TikBit-PPT-Toolkit-v0.1.0.zip","sha256":"A8DAC842E36A363435343F5ECA7CD9A8F4E3B18B90D610C0CA0D296EDFF840B9","recommendation":"on-demand"},
-    {"id":"ppt-style-gallery","name":"PPT风格速查图册","description":"PPT 风格与 HTML 版式速查图册","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"must-skills","name":"必装 Skill 底层能力包","description":"docx、xlsx、pptx、pdf、知识库检索、Skill 创建和网页正文读取等通用底层能力；兼容工作台旧版必装 Skill 包","platforms":["all"],"requires_api_key":false,"recommendation":"essential","installed_markers":["~/.claude/skills/docx","~/.claude/skills/xlsx","~/.claude/skills/pptx","~/.claude/skills/pdf","~/.claude/skills/kb-retriever","~/.claude/skills/skill-creator","~/.claude/skills/defuddle"]},
+    {"id":"html-page","name":"HTML 页面生成系统","description":"H5、推文页和落地页生成系统","platforms":["all"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"AI 生成的文案、方案和 PPT 内容更适合先通过 HTML 页面呈现、检查和交付。"},
     {"id":"document-reader","name":"文档读取编辑工具包","description":"优化 Word、Excel、PPT、PDF、图片与网页等常用文档的读取、解析与编辑","platforms":["windows","macos","linux"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"增强 PDF、Word、Excel、PPT、图片和网页等常用资料的读取、解析与编辑能力。"},
+    {"id":"gpt-image","name":"GPT 生图工具包","description":"TikBit AI 工作台对话式 GPT 生图、参考图编辑与批量出图","platforms":["windows","macos"],"requires_api_key":true,"api_key_source":"workstation_relay","recommendation":"essential","recommendation_reason":"让 AI 在对话过程中直接生成、修改和批量输出图片，不需要用户手动打开图片工作室或敲命令。"},
+    {"id":"voice-notification","name":"任务语音通知工具包","description":"AI 任务完成、等待确认或遇到阻塞时的语音提醒","platforms":["windows","macos"],"requires_api_key":false,"recommendation":"recommended","recommendation_reason":"适合同时运行多个任务，或单次任务需要几分钟到几十分钟的用户；设备需具备语音播放条件。"},
+    {"id":"writing-humanizer","name":"去 AI 化写作工具包","description":"让中文文案、陈述稿和讲稿更自然、更像真人表达","platforms":["all"],"requires_api_key":false,"recommendation":"recommended","recommendation_reason":"适合经常写文案、陈述稿、讲稿和其他对外文字的用户。"},
+    {"id":"ai-customer-service","name":"在线客服机器人（自部署）","description":"给自己的网站加一个 AI 问答窗口；含参考实现、部署脚本与 Skill，需自备服务器","platforms":["windows","macos","linux"],"requires_api_key":true,"api_key_source":"user_provided","recommendation":"on-demand"},
+    {"id":"ai-social-media","name":"AI 新媒体工具包","description":"AI 新媒体内容与视觉 Skill，含公众号排版、图片内嵌和一键复制","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"ai-media-team","name":"新媒体 AI 员工","description":"策划、内容、制作三个长期协作的 AI 总监，含 Skill、配置模板、工具箱、素材和字体","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand","installed_markers":["新媒体AI员工/我的新媒体AI员工.md","~/.claude/skills/marketing-director","~/.claude/skills/content-director","~/.claude/skills/creative-director"]},
+    {"id":"ai-marketing","name":"AI 营销工具包","description":"营销、定价、竞品与增长 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
+    {"id":"ai-self-growth","name":"AI 自我成长工具","description":"让 AI 在知识库中积累用户画像、项目记忆和经验避坑","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand","installed_markers":["🌱AI成长档案","AI-GROWTH-BEGIN"]},
+    {"id":"ppt-design","name":"PPT 制作工具包","description":"PPT 制作相关 Skill 与指南；核心大包通过 Release 分发。仅 A 模式（GPT 生图）需要密钥，B/C/E/F1/G 模式不需要","platforms":["all"],"requires_api_key":true,"api_key_source":"workstation_relay","release_artifact":true,"download_url":"https://github.com/startupsalad/TikBit/releases/download/v0.1.0/TikBit-PPT-Toolkit-v0.1.0.zip","sha256":"A8DAC842E36A363435343F5ECA7CD9A8F4E3B18B90D610C0CA0D296EDFF840B9","recommendation":"on-demand"},
+    {"id":"ppt-style-gallery","name":"PPT 风格速查图册","description":"PPT 风格与 HTML 版式速查图册","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
     {"id":"web-design","name":"网页设计套件","description":"网页设计方法论与设计 Skill","platforms":["all"],"requires_api_key":false,"recommendation":"on-demand"},
-    {"id":"video-audio","name":"视频音频处理工具包","description":"视频下载、抽帧、语音转文字。本地转写不需要密钥；watch 的云端转写需自备 Groq 或 OpenAI 密钥，不能复用工作台令牌（中转站不提供语音转写）","platforms":["windows","macos","linux"],"requires_api_key":true,"api_key_source":"user_provided","recommendation":"on-demand"},
-    {"id":"voice-notification","name":"任务语音通知工具包","description":"AI 任务完成、等待确认或遇到阻塞时的语音提醒","platforms":["windows","macos"],"requires_api_key":false,"recommendation":"conditional","recommendation_reason":"适合同时运行多个任务，或单次任务需要几分钟到几十分钟的用户；设备需具备语音播放条件。"},
-    {"id":"context-reminder","name":"对话长度提醒工具包","description":"对话过长时主动提醒保存进度、压缩上下文或新开对话","platforms":["all"],"requires_api_key":false,"recommendation":"essential","recommendation_reason":"有效节省 Token，并降低对话过长后 AI 遗漏信息、跑偏或输出不稳定的概率。"},
-    {"id":"writing-humanizer","name":"去AI化写作工具包","description":"让中文文案、陈述稿和讲稿更自然、更像真人表达","platforms":["all"],"requires_api_key":false,"recommendation":"conditional","recommendation_reason":"适合经常写文案、陈述稿、讲稿和其他对外文字的用户。"}
+    {"id":"video-audio","name":"视频音频处理工具包","description":"视频下载、抽帧、语音转文字。本地转写不需要密钥；watch 的云端转写需自备 Groq 或 OpenAI 密钥，不能复用工作台令牌","platforms":["windows","macos","linux"],"requires_api_key":true,"api_key_source":"user_provided","recommendation":"on-demand"},
+    {"id":"video-channels-comment","name":"视频号评论导出工具","description":"从用户自己登录的视频号助手批量导出评论，生成 Markdown、CSV、JSON，便于分析选题和反馈","platforms":["windows","macos"],"requires_api_key":false,"recommendation":"on-demand","installed_markers":["~/.claude/channels-comment/channels-comment-export.py","CHANNELS-COMMENT-BEGIN"]},
+    {"id":"ai-voice-pack","name":"AI 语音朗读包","description":"Claude 回复结束后用系统语音朗读简短总结；离线运行，不消耗 API Token","platforms":["windows","macos"],"requires_api_key":false,"recommendation":"on-demand","installed_markers":["~/.claude/ss-speak/speak.js","SS-SPEAK-BEGIN"]},
+    {"id":"wechat-ai-deployment","name":"微信接入 AI 部署手册","description":"个人微信与企业微信接入 AI 的统一部署工具包，含代码、Docker、密钥和安全配置手册","platforms":["windows","macos","linux"],"requires_api_key":true,"api_key_source":"user_provided","recommendation":"on-demand","installed_markers":["personal/部署手册.md","enterprise/部署手册.md"]}
   ]
 }

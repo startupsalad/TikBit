@@ -1,42 +1,55 @@
 # TikBit 工具库
 
-创业沙拉维护的通用 AI 工具集合，面向 AI 助手和团队成员使用。
+创业沙拉 | TikBit 维护的通用 AI 工具集合，面向 AI 助手和团队成员使用。
 
 ## 给 AI 助手
 
-把本仓库地址交给你的 AI：
+把本仓库地址交给 AI：
 
 ```text
 https://github.com/startupsalad/TikBit
 ```
 
-请先读取 [`catalog.json`](catalog.json) 中的 `recommendation_policy`、`api_key_policy` 和完整工具清单。先检查本机已安装状态，再按“建议必装 → 条件推荐 → 其他按需”的顺序向用户介绍并解释理由，已安装的直接标注为已安装。等待用户确认具体工具后，再读取对应目录下的 `INSTALL.md` 并按当前操作系统执行安装。安装前先确认目标路径和依赖。
+请先读取 [`catalog.json`](catalog.json) 的 `recommendation_policy`、`api_key_policy` 和完整工具清单，再按三档向用户介绍：**必装 → 推荐 → 按需**。先检查本机是否已经安装对应目录、Skill 或行为指令；已经安装且可用的直接标记为已安装，不要重复复制或重复添加钩子。等待用户确认具体工具后，再读取对应目录的 `INSTALL.md`。
 
-密钥按 `api_key_policy` 处理：`api_key_source` 为 `workstation_relay` 的工具（`gpt-image`、`ppt-design`）直接复用本机 TikBit 工作台已配置的令牌，**不要向用户索取密钥**；`user_provided` 的工具（`ai-customer-service`）运行在用户自己的服务器上，必须由用户自备令牌，不要代填本机令牌。任何情况下都不回显或上传用户的密钥。
+`context-reminder` 已集成到工作台插件，不再作为本仓库工具。旧版工作台的独立必装 Skill 包仍保留为 `must-skills`，AI 识别到已有 docx/xlsx/pptx/pdf 等 Skill 时应跳过重复安装。
 
-## 安装建议
+## 三档推荐
 
-推荐只代表优先级，**不会跳过用户确认自动安装**。
+### 必装
 
-### 建议必装
+| 工具 | 用途 |
+|:---|:---|
+| `must-skills` | docx、xlsx、pptx、pdf、知识库检索、Skill 创建和网页正文读取等底层能力 |
+| `html-page` | H5、推文页和落地页生成 |
+| `document-reader` | Word、Excel、PPT、PDF、图片和网页读取、解析与编辑 |
+| `gpt-image` | 工作台对话式生图、参考图编辑和批量出图 |
 
-| 工具 | 推荐理由 |
-|:---:|:---|
-| `html-page` | AI 生成的文案、方案和 PPT 内容，更适合先通过 HTML 页面呈现、检查和交付。 |
-| `document-reader` | 增强 PDF、Word、Excel、PPT、图片和网页等常用资料的读取、解析与编辑能力。 |
-| `context-reminder` | 有效节省 Token，并降低对话过长后 AI 遗漏信息、跑偏或输出不稳定的概率。 |
-| `gpt-image` | 让 TikBit AI 在对话中直接生成、修改和批量输出图片；图片工作室仍用于用户手动操作单张图片。 |
+### 推荐
 
-### 条件推荐
+| 工具 | 适合场景 |
+|:---|:---|
+| `voice-notification` | 同时跑多个任务，或经常等待几分钟以上 |
+| `writing-humanizer` | 经常写文案、陈述稿、讲稿和其他对外文字 |
 
-| 工具 | 适合谁 |
-|:---:|:---|
-| `voice-notification` | 会同时运行多个任务，或经常遇到需要几分钟到几十分钟的任务，并且设备具备语音播放条件。 |
-| `writing-humanizer` | 经常写文案、陈述稿、讲稿和其他对外文字。 |
+### 按需
 
-其余工具由 AI 根据用户的实际任务按需推荐。
+| 工具 | 用途 |
+|:---|:---|
+| `ai-customer-service` | 自部署在线客服机器人 |
+| `ai-social-media` | 新媒体内容与视觉 Skill |
+| `ai-media-team` | 策划、内容、制作三个 AI 总监 |
+| `ai-marketing` | 营销、定价、竞品与增长 Skill |
+| `ai-self-growth` | 在知识库积累用户画像、项目记忆和经验 |
+| `ppt-design` | PPT 制作 Skill 与指南 |
+| `ppt-style-gallery` | PPT 风格与 HTML 版式速查图册 |
+| `web-design` | 网页设计方法论与 Skill |
+| `video-audio` | 视频下载、抽帧和语音转文字 |
+| `video-channels-comment` | 视频号评论批量导出与分析 |
+| `ai-voice-pack` | Claude 回复后的系统语音朗读（Claude 专用） |
+| `wechat-ai-deployment` | 个人微信/企业微信接入 AI 的统一部署手册 |
 
-## 快速安装
+## 快速安装工具库
 
 Windows PowerShell：
 
@@ -50,34 +63,8 @@ macOS / Linux：
 curl -fsSL https://raw.githubusercontent.com/startupsalad/TikBit/main/install.sh | bash
 ```
 
-完整元数据见 [`catalog.json`](catalog.json)。
+## 密钥与隐私
 
-## 工具目录
+仓库不包含 API Key、Token、密码、客户资料或本机路径。`gpt-image` 和 `ppt-design` 的指定模式可复用本机工作台令牌；自部署客服、视频云端转写和微信接入必须使用用户自己的凭证。任何密钥只写入用户自己的本地或服务器环境，不提交到 Git。
 
-| 工具 | 用途 | 推荐等级 |
-|:---:|:---|:---:|
-| `ai-customer-service` | 在线客服机器人（自部署）：给自己网站加 AI 问答窗口，需自备服务器和令牌 | 按需 |
-| `ai-social-media` | AI 新媒体内容与视觉 Skill | 按需 |
-| `ai-marketing` | 营销、定价、竞品与增长 Skill | 按需 |
-| `html-page` | H5、推文页和落地页生成系统 | 建议必装 |
-| `gpt-image` | TikBit AI 工作台对话式 GPT 生图、参考图编辑和批量出图 | 建议必装 |
-| `ppt-design` | PPT 制作相关 Skill 与指南 | 按需 |
-| `ppt-style-gallery` | PPT 风格与 HTML 版式速查图册 | 按需 |
-| `document-reader` | Word、Excel、PPT、PDF、图片与网页读取、解析和编辑 | 建议必装 |
-| `web-design` | 网页设计方法论与设计 Skill | 按需 |
-| `video-audio` | 视频音频处理工具包 | 按需 |
-| `voice-notification` | AI 长任务语音提醒 | 条件推荐 |
-| `context-reminder` | 对话长度提醒与 Token 管理 | 建议必装 |
-| `writing-humanizer` | 中文文案、陈述稿和讲稿去 AI 化 | 条件推荐 |
-
-## 隐私与安全
-
-本仓库不包含 API Key、Token、密码、客户资料、微盘占位文件或本机安装配置。需要密钥的工具只提供空配置和环境变量示例，密钥必须由使用者在本机配置。
-
-## 第三方内容
-
-部分工具包含第三方开源 Skill、模板或依赖，版权和许可证见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 及各工具目录内的许可证文件。
-
-## 许可证
-
-创业沙拉原创分发层和原创代码采用 MIT License；第三方内容以其原许可证为准。
+部分工具包含第三方 Skill、模板、字体或运行依赖，许可证见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 及各工具目录。
