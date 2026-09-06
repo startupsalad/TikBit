@@ -360,11 +360,11 @@ PowerShell `.ps1` 被 Git Bash 以 GBK 解析时中文会乱码。所以脚本�
 
 读 Claudian 插件自己的数据文件，**顺序是从标签列表出发**（不是扫 sessions 目录，那样在多对话下会拿错）：
 
-1. 从环境变量 `CLAUDE_CODE_SESSION_ID` 拿当前会话 id
+1. Claude 从环境变量 `CLAUDE_CODE_SESSION_ID` 拿当前会话 id；Codex 从 `CODEX_THREAD_ID` 拿当前 thread id
 2. 读 `.obsidian/plugins/tikbit-claudian/data.json` 的 `tabManagerState.openTabs` 数组，数组顺序 = 界面上标签顺序
 3. 按顺序遍历，用每个元素的 `conversationId` 去读 `.claudian/sessions/<id>.meta.json`
-4. 该 meta 的 `sessionId` **或** `providerState.providerSessionId` 命中当前会话 → 返回它的位置（0=标签1，1=标签2…）
-5. 全都没命中 → 取"`sessionId` 还是空、且 `updatedAt` 最新"的那个标签（**新对话第一轮**插件还没落盘 `sessionId`，靠这条兜住）
+4. 该 meta 的 `sessionId`、`providerState.providerSessionId` 或 `providerState.threadId` 命中当前会话/thread → 返回它的位置（0=标签1，1=标签2…）
+5. 全都没命中 → 取上述三个 id 都还是空、且 `updatedAt` 最新的标签（**新对话第一轮**插件还没落盘 id，靠这条兜住）
 6. 播 `voice_clips/claudian_multitab/dialog<N>_<话术>.mp3`；音频缺失就用 SAPI 念"对话N，……"，编号绝不丢
 
 **零侵入**：不改插件源码，只读已有数据文件，插件更新不受影响。
@@ -375,4 +375,4 @@ PowerShell `.ps1` 被 Git Bash 以 GBK 解析时中文会乱码。所以脚本�
 
 **音色**：默认使用晓晓（zh-CN-XiaoxiaoNeural）神经语音，自然流畅。如需切换音色，运行双击 `选择语音.bat`（Windows）或 `选择语音.command`（Mac）。
 
-**更新日期**：2026-09-06（六种话术全部带标签编号；知识库路径改走 `TIKBIT_VAULT_ROOT` 环境变量；修新对话第一轮认不出编号）
+**更新日期**：2026-09-07（补齐 Codex thread 标签识别；修编号失效时晓晓音与系统机械音复读）

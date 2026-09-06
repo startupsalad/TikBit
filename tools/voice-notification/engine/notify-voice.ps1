@@ -101,6 +101,9 @@ function Play-Clip([string]$key) {
 # returns 0, everything below behaves exactly like the single-tab version.
 function Get-TabIndex {
   $sid = $env:CLAUDE_CODE_SESSION_ID
+  if ([string]::IsNullOrWhiteSpace($sid)) {
+    $sid = $env:CODEX_THREAD_ID
+  }
   if ([string]::IsNullOrWhiteSpace($sid)) { return 0 }
   $vaultRoot = $env:TIKBIT_VAULT_ROOT
   if ([string]::IsNullOrWhiteSpace($vaultRoot)) { return 0 }
@@ -131,12 +134,16 @@ function Get-TabIndex {
 
     $mSid = "$($meta.sessionId)"
     $pSid = ""
-    if ($meta.providerState) { $pSid = "$($meta.providerState.providerSessionId)" }
+    $threadSid = ""
+    if ($meta.providerState) {
+      $pSid = "$($meta.providerState.providerSessionId)"
+      $threadSid = "$($meta.providerState.threadId)"
+    }
 
-    if ($mSid -eq $sid -or $pSid -eq $sid) { return ($i + 1) }
+    if ($mSid -eq $sid -or $pSid -eq $sid -or $threadSid -eq $sid) { return ($i + 1) }
 
     # No sessionId on disk = that tab has never finished a turn = "fresh" candidate.
-    if ([string]::IsNullOrWhiteSpace($mSid) -and [string]::IsNullOrWhiteSpace($pSid)) {
+    if ([string]::IsNullOrWhiteSpace($mSid) -and [string]::IsNullOrWhiteSpace($pSid) -and [string]::IsNullOrWhiteSpace($threadSid)) {
       [int64]$stamp = 0
       [int64]::TryParse("$($meta.updatedAt)", [ref]$stamp) | Out-Null
       if ($stamp -ge $freshStamp) { $freshStamp = $stamp; $freshSlot = $i + 1 }
