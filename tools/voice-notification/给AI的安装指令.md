@@ -66,14 +66,14 @@ cp -r voice_clips/* ~/.claude/voice_clips/
 ├── xiaoyi/
 ├── yunxi/
 ├── yunyang/
-└── claudian_multitab/   # 可选：由用户自行生成的多标签音频
+└── claudian_multitab/   # 多标签音频，dialog1~6 × 6 种话术 = 36 个
 ```
 
 ### C. 可选的多标签集成
 
-多标签集成需要用户自行设置 `TIKBIT_VAULT_ROOT` 环境变量，指向自己的知识库路径。本公开版不携带任何特定用户的知识库路径。
+多标签集成需要用户自行设置 `TIKBIT_VAULT_ROOT` 环境变量，指向自己的知识库路径（见第 3 步）。本公开版不携带任何特定用户的知识库路径。
 
-多标签版播报时按 `voice_clips/claudian_multitab/dialog<N>_done.mp3` 取音频，找不到就自动降级播通用 `done`，不会报错。
+播报时按 `voice_clips/claudian_multitab/dialog<N>_<话术>.mp3` 取音频，六种话术 `done / perm / stuck / wait / ask / error` 都带编号。找不到音频也不会退成"没编号"——脚本会用 SAPI 直接念出"对话N，……"，编号信息一定保留。
 
 ### D. 开超过 6 个标签时补音频
 
@@ -82,6 +82,9 @@ cp -r voice_clips/* ~/.claude/voice_clips/
 ```bash
 pip install edge-tts imageio-ffmpeg     # imageio-ffmpeg 自带二进制，不用装系统 ffmpeg
 python engine/gen-clips.py --start 7 --tabs 12
+
+# 只补某几种话术（不重跑已有的）
+python engine/gen-clips.py --kinds stuck,wait
 ```
 
 跑完每个文件会自检打印 `OK 48kbps`，出现 `WARN: 首帧 64kbps` 就是编码参数被改坏了。
@@ -90,39 +93,41 @@ python engine/gen-clips.py --start 7 --tabs 12
 
 ---
 
-## 第 3 步：修改知识库路径（**仅 Claudian 版需要**）
+## 第 3 步：设置知识库路径（**仅 Claudian 版需要**）
 
-如果 `version == "claudian"`，**必须**修改脚本中的知识库路径 base64：
+如果 `version == "claudian"`，给用户设一个 `TIKBIT_VAULT_ROOT` 环境变量指向知识库根目录。**脚本不再内嵌任何路径**，不用改脚本内容。
 
-### 3.1 生成当前知识库路径的 base64
+### 3.1 设置环境变量（用户级、永久生效）
 
-```python
-import base64
-from pathlib import Path
-
-vault_path = str(Path.cwd()).replace("\\", "/")  # 当前工作目录
-vault_b64 = base64.b64encode(vault_path.encode('utf-8')).decode()
-
-print(f"知识库路径: {vault_path}")
-print(f"Base64: {vault_b64}")
+```powershell
+# Windows：把路径换成用户知识库根目录的实际路径（正斜杠或反斜杠都行）
+[Environment]::SetEnvironmentVariable(
+  "TIKBIT_VAULT_ROOT",
+  "C:/Users/你的用户名/path/to/vault",
+  "User")
 ```
-
-### 3.2 替换两个脚本中的 base64
-
-编辑以下两个文件，找到 `$vaultB64 = "QzovVXNlcnMv..."` 这一行，把双引号里的内容替换成上面生成的 base64：
-
-- `~/.claude/notify-voice.ps1`
-- `~/.claude/notify-gate.ps1`
-
-### 3.3 验证语法
 
 ```bash
-# Windows PowerShell 语法检查
-powershell -NoProfile -ExecutionPolicy Bypass -Command ". '~/.claude/notify-voice.ps1'"
-powershell -NoProfile -ExecutionPolicy Bypass -Command ". '~/.claude/notify-gate.ps1'"
+# Mac：写进 shell 配置
+echo 'export TIKBIT_VAULT_ROOT="/Users/你的用户名/path/to/vault"' >> ~/.zshrc
 ```
 
-无报错说明改对了。
+> 设完要**重启 AI 客户端**（甚至重新登录）才读得到新环境变量。没设或设错 = 多标签播报自动关闭，退回通用播报，不会报错。
+
+### 3.2 验证语法和取值
+
+```powershell
+# 语法检查（无输出即通过）
+powershell -NoProfile -ExecutionPolicy Bypass -Command "
+  [void][System.Management.Automation.Language.Parser]::ParseFile(
+    (Resolve-Path ~/.claude/notify-voice.ps1), [ref]\$null, [ref]\$errs)
+  if (\$errs) { \$errs } else { 'Parser OK' }"
+
+# 确认能解析出标签号（返回 >=1 说明通了，0 说明环境变量没读到或标签列表为空）
+powershell -NoProfile -ExecutionPolicy Bypass -Command "
+  . ~/.claude/notify-voice.ps1 -Mode nosuchmode 2>&1 | Out-Null
+  'Get-TabIndex -> ' + (Get-TabIndex)"
+```
 
 ---
 
@@ -280,12 +285,14 @@ tail ~/.claude/voice-notify.log
 
 ### Claudian 版：播的是"搞定啦"不带编号
 
-日志显示 `done: fallback (tab=N)`，两种情况分开看：
+正常情况下**不该出现**这种事 —— 找不到音频时脚本会用 SAPI 念出"对话N，……"，编号一定保留。真听到不带编号的，只有一种原因：**编号没解析出来**（`tab=0`）。
 
 | 日志 | 原因 | 怎么修 |
 |:---|:---|:---|
-| `tab=0` | 没认出标签编号 | ①知识库路径 base64 不对 → 重新生成替换 ②`.claudian/sessions/` 或 `data.json` 不存在 → 确认真在 Claudian 环境 ③新建对话还没进 `openTabs` → 正常，先发一轮消息就有了 |
-| `tab=3` 却仍 fallback | 认出编号了但找不到音频 | 检查 `~/.claude/voice_clips/claudian_multitab/dialog3_done.mp3` 在不在 —— 多标签音频必须在 `claudian_multitab/` 子目录下，别摊平到 `voice_clips/` 根目录 |
+| `tab=0` | 没认出标签编号 | ①`TIKBIT_VAULT_ROOT` 没设、设错、或设完没重启客户端 → 见第 3 步 ②`.claudian/sessions/` 或 `data.json` 不存在 → 确认真在 Claudian 环境 ③`openTabs` 是空的 |
+| `tab=3` 却是机械音 | 认出编号了但找不到音频，退到 SAPI 念 | 检查 `~/.claude/voice_clips/claudian_multitab/dialog3_<话术>.mp3` 在不在 —— 必须在 `claudian_multitab/` 子目录下，别摊平到 `voice_clips/` 根目录 |
+
+> 注意：**新建对话第一轮**曾经必然 `tab=0`（插件要等一轮结束才把 `sessionId` 落盘）。现已修 —— 匹配不到就取"最新那个还没落盘的标签"，日志打 `inferred fresh tab N`。只有同时存在两个全新标签时才可能编号猜错。
 
 ### 声音开头/结尾被切掉（"对话三搞定啦"听成"话三搞定啦"）
 
@@ -345,20 +352,22 @@ rm -rf ~/.claude/voice_clips
 
 ## 技术说明
 
-### 为什么 Claudian 版需要 base64 编码路径？
+### 为什么中文话术在脚本里是 base64？
 
-PowerShell `.ps1` 文件被 Git Bash 以 GBK 解析，中文路径会乱码。解决方案是把路径 base64 编码后写入脚本，运行时解码。
+PowerShell `.ps1` 被 Git Bash 以 GBK 解析时中文会乱码。所以脚本里的中文播报话术一律 base64 存、运行时解码（`$SFX`/`$PRE`/`$NUMS` 三张表）。知识库路径不走这套 —— 它从 `TIKBIT_VAULT_ROOT` 环境变量读，不进脚本正文。
 
 ### 为什么 Claudian 版能识别标签编号？
 
-通过读取 Claudian 插件的数据文件：
-1. 从钩子 payload 拿到 `session_id`
-2. 扫描 `.claudian/sessions/*.meta.json` 找到对应的 `conversationId`
-3. 读 `.obsidian/plugins/tikbit-claudian/data.json` 的 `openTabs` 数组
-4. 找到 `conversationId` 匹配的元素，拿到数组索引（0=标签1，1=标签2...）
-5. 播放 `voice_clips/claudian_multitab/dialog<N>_done.mp3`，缺文件就降级播通用 `done`
+读 Claudian 插件自己的数据文件，**顺序是从标签列表出发**（不是扫 sessions 目录，那样在多对话下会拿错）：
 
-**零侵入**：不修改插件源码，完全基于已有数据文件，插件更新不受影响。
+1. 从环境变量 `CLAUDE_CODE_SESSION_ID` 拿当前会话 id
+2. 读 `.obsidian/plugins/tikbit-claudian/data.json` 的 `tabManagerState.openTabs` 数组，数组顺序 = 界面上标签顺序
+3. 按顺序遍历，用每个元素的 `conversationId` 去读 `.claudian/sessions/<id>.meta.json`
+4. 该 meta 的 `sessionId` **或** `providerState.providerSessionId` 命中当前会话 → 返回它的位置（0=标签1，1=标签2…）
+5. 全都没命中 → 取"`sessionId` 还是空、且 `updatedAt` 最新"的那个标签（**新对话第一轮**插件还没落盘 `sessionId`，靠这条兜住）
+6. 播 `voice_clips/claudian_multitab/dialog<N>_<话术>.mp3`；音频缺失就用 SAPI 念"对话N，……"，编号绝不丢
+
+**零侵入**：不改插件源码，只读已有数据文件，插件更新不受影响。
 
 ---
 
@@ -366,4 +375,4 @@ PowerShell `.ps1` 文件被 Git Bash 以 GBK 解析，中文路径会乱码。�
 
 **音色**：默认使用晓晓（zh-CN-XiaoxiaoNeural）神经语音，自然流畅。如需切换音色，运行双击 `选择语音.bat`（Windows）或 `选择语音.command`（Mac）。
 
-**更新日期**：2026-07-31
+**更新日期**：2026-09-06（六种话术全部带标签编号；知识库路径改走 `TIKBIT_VAULT_ROOT` 环境变量；修新对话第一轮认不出编号）

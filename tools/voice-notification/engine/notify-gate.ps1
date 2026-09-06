@@ -59,36 +59,50 @@ function Get-TabIndex([string]$sid) {
   if ([string]::IsNullOrWhiteSpace($vaultRoot)) { return 0 }
 
   $sessionsDir = $vaultRoot + "/.claudian/sessions"
+  $dataPath    = $vaultRoot + "/.obsidian/plugins/tikbit-claudian/data.json"
   if (-not (Test-Path $sessionsDir)) { return 0 }
+  if (-not (Test-Path $dataPath))    { return 0 }
 
-  $convId = ""
-  try {
-    Get-ChildItem -Path $sessionsDir -Filter "*.meta.json" | ForEach-Object {
-      if ($convId) { return }
-      try {
-        $meta = Get-Content $_.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($meta.sessionId -eq $sid) {
-          $convId = $meta.id
-        }
-      } catch {}
-    }
-  } catch {}
-
-  if ([string]::IsNullOrWhiteSpace($convId)) { return 0 }
-
-  $dataPath = $vaultRoot + "/.obsidian/plugins/tikbit-claudian/data.json"
-  if (-not (Test-Path $dataPath)) { return 0 }
-
+  # Same resolution logic as Get-TabIndex in notify-voice.ps1 -- change one, change both.
+  # openTabs order IS the number the user sees, so only touch those few meta files
+  # (never scan the whole sessions dir; it grows into the hundreds).
   try {
     $data = Get-Content $dataPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    $tabs = $data.tabManagerState.openTabs
-    for ($i=0; $i -lt $tabs.Count; $i++) {
-      if ($tabs[$i].conversationId -eq $convId) {
-        return ($i + 1)
-      }
-    }
-  } catch {}
+    $tabs = @($data.tabManagerState.openTabs)
+  } catch { return 0 }
+  if ($tabs.Count -eq 0) { return 0 }
 
+  [int64]$freshStamp = -1
+  $freshSlot = 0
+
+  for ($i = 0; $i -lt $tabs.Count; $i++) {
+    $cid = "$($tabs[$i].conversationId)"
+    if ([string]::IsNullOrWhiteSpace($cid)) { continue }
+    $metaPath = Join-Path $sessionsDir ($cid + ".meta.json")
+    if (-not (Test-Path $metaPath)) { continue }
+    try { $meta = Get-Content $metaPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { continue }
+
+    $mSid = "$($meta.sessionId)"
+    $pSid = ""
+    if ($meta.providerState) { $pSid = "$($meta.providerState.providerSessionId)" }
+
+    if ($mSid -eq $sid -or $pSid -eq $sid) { return ($i + 1) }
+
+    # No sessionId on disk = that tab has never finished a turn = "fresh" candidate.
+    if ([string]::IsNullOrWhiteSpace($mSid) -and [string]::IsNullOrWhiteSpace($pSid)) {
+      [int64]$stamp = 0
+      [int64]::TryParse("$($meta.updatedAt)", [ref]$stamp) | Out-Null
+      if ($stamp -ge $freshStamp) { $freshStamp = $stamp; $freshSlot = $i + 1 }
+    }
+  }
+
+  # Fallback by elimination: on a brand-new conversation's FIRST turn the plugin has
+  # not written sessionId yet, so the exact match above always misses. The newest
+  # not-yet-persisted tab is the only unclaimed slot -- that is us.
+  if ($freshSlot -gt 0) {
+    Log "tab resolve: sid=$sid no exact match -> inferred fresh tab $freshSlot"
+    return $freshSlot
+  }
   return 0
 }
 

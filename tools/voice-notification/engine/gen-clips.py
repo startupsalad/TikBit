@@ -157,6 +157,8 @@ async def main() -> None:
     ap.add_argument("--pad-only", metavar="DIR",
                     help="只给该目录下已有 mp3 焊静音+重编码，不重新 TTS")
     ap.add_argument("--start", type=int, default=1, help="从第几号开始（补号用）")
+    ap.add_argument("--kinds", help="只生成指定话术，逗号分隔（done,perm,stuck,wait,ask）；"
+                                    "默认全部。补料时用，避免重跑已有的")
     args = ap.parse_args()
 
     ffmpeg = ffmpeg_exe()
@@ -184,10 +186,28 @@ async def main() -> None:
     raw = out / "_raw"
     raw.mkdir(parents=True, exist_ok=True)
 
+    # 五种话术都要带编号。done/perm 是老的两种；stuck/wait/ask 原来只有不带编号的
+    # 通用 clip，多标签下听到「卡住了」根本不知道是哪个对话，等于没报。
+    # 改话术记得同步 notify-voice.ps1 里的 $SUFFIX（那边是 SAPI 兜底用的同一套后缀）。
+    kinds = [
+        ("done",  "搞定啦"),
+        ("perm",  "需要授权一下"),
+        ("stuck", "卡住了，来看一下"),
+        ("wait",  "在等你回复呢"),
+        ("ask",   "需要你拿个主意"),
+        ("error", "出错了，请检查"),
+    ]
+    if args.kinds:
+        want = {k.strip() for k in args.kinds.split(",") if k.strip()}
+        unknown = want - {k for k, _ in kinds}
+        if unknown:
+            sys.exit(f"未知话术：{','.join(sorted(unknown))}（可选 {','.join(k for k, _ in kinds)}）")
+        kinds = [(k, t) for k, t in kinds if k in want]
+
     jobs = []
     for n in range(args.start, args.tabs + 1):
-        jobs.append((f"dialog{n}_done.mp3", f"对话{cn(n)}，搞定啦"))
-        jobs.append((f"dialog{n}_perm.mp3", f"对话{cn(n)}，需要授权一下"))
+        for key, phrase in kinds:
+            jobs.append((f"dialog{n}_{key}.mp3", f"对话{cn(n)}，{phrase}"))
 
     print(f"音色：{args.voice} ({voice_id})")
     print(f"输出：{out}")
