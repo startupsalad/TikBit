@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 """生成多标签播报语音 clip（"对话N，搞定啦" / "对话N，需要授权一下"）。
 
-默认只带 1~6 号对话的成品。开更多标签就跑这个脚本补，别手工拿 ffmpeg 默认参数
+默认带 1~10 号对话的成品。开更多标签就跑这个脚本补，别手工拿 ffmpeg 默认参数
 转 —— 默认参数会踩下面「编码铁律」那两个坑，声音会被掐头去尾。
+
+⚠️ 铺到几号，就得让播报脚本认到几号。分发版 notify-voice.ps1 / .sh 没有写死上限
+（缺 mp3 时会用系统合成音念出完整带编号句），但机械音体验差；本机私有版
+~/.claude/notify-voice.ps1 曾把 `-le 6` 写死，开第 7 个标签直接整轮机械音
+（2026-09-08 踩过）。改 --tabs 后回头核一遍播报脚本的上限。
 
 用法
 ----
-    python gen-clips.py                      # 1~6 号，晓晓音色，输出到本机安装目录
-    python gen-clips.py --tabs 10            # 补到 10 号
+    python gen-clips.py                      # 1~10 号，晓晓音色，输出到本机安装目录
+    python gen-clips.py --tabs 12            # 补到 12 号
     python gen-clips.py --voice yunxi        # 换音色（xiaoxiao/xiaoyi/yunxi/yunyang）
     python gen-clips.py --out D:/some/dir    # 指定输出目录
     python gen-clips.py --pad-only D:/dir    # 只给已有 mp3 焊静音+重编码，不重新 TTS
@@ -151,7 +156,7 @@ async def tts(text: str, voice: str, dst: Path) -> None:
 
 async def main() -> None:
     ap = argparse.ArgumentParser(description="生成多标签播报语音 clip")
-    ap.add_argument("--tabs", type=int, default=6, help="生成到第几号对话（默认 6）")
+    ap.add_argument("--tabs", type=int, default=10, help="生成到第几号对话（默认 10）")
     ap.add_argument("--voice", default="xiaoxiao", choices=sorted(VOICES), help="音色")
     ap.add_argument("--out", help="输出目录（默认自动挑本机安装目录，见文件头说明）")
     ap.add_argument("--pad-only", metavar="DIR",
