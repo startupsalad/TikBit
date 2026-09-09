@@ -1,7 +1,7 @@
 {
   "base_url": "https://tikbit.ai/v1",
   "api_key": "",
-  "image_model": "gpt-image-2",
+  "image_model": "gpt-image-2.5-sunburst",
   "output_dir": "",
   "read_timeout": "300",
   "max_retries": "5",

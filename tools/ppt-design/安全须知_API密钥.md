@@ -14,7 +14,7 @@
 
 **默认配置**：
 ```python
-cfg = {"base_url": "", "api_key": "", "image_model": "gpt-image-2"}
+cfg = {"base_url": "", "api_key": "", "image_model": "gpt-image-2.5-sunburst"}
 ```
 
 **密钥来源：复用 TikBit 工作台令牌**
@@ -32,7 +32,7 @@ A 模式的生图走创业沙拉 TikBit 中转站，和 `gpt-image` 工具包是
 ---
 base_url: https://tikbit.ai/v1
 api_key: 复用的工作台令牌
-image_model: gpt-image-2
+image_model: gpt-image-2.5-sunburst
 ---
 ```
 

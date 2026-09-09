@@ -14,12 +14,16 @@
  *   # 文字生图
  *   node gpt-image.js "一只可爱的柴犬" --size 1024x1024 --output 柴犬
  *
+ *   # 出图档位（--model，二选一；不写用配置里的默认档）
+ *   node gpt-image.js "产品海报" --model 精细   # gpt-image-2.5-sunburst，更精致、稍慢
+ *   node gpt-image.js "占位插图" --model 快速   # gpt-image-2.5-flare，更快、适合批量
+ *
  *   # 参考图编辑（一张或多张，逗号分隔）
  *   node gpt-image.js "改成赛博朋克风格" --reference 原图.png
  *   node gpt-image.js "把两张图合成一张" --reference 图1.png,图2.png
  *
  *   # 批量并发（做多张时推荐；并发上限默认 3，避免打爆上游）
- *   node gpt-image.js --batch 任务清单.txt --concurrency 3
+ *   node gpt-image.js --batch 任务清单.txt --concurrency 3 --model 快速
  *   # 任务清单.txt 每行一个任务，两种写法：
  *   #   输出文件名<Tab或 | >图片描述     （指定文件名）
  *   #   图片描述                          （自动按时间戳命名）
@@ -30,8 +34,9 @@
  *      base_url / api_key / image_model / output_dir
  *      / read_timeout 读超时秒·默认300 / max_retries 重试次数·默认5
  *      / gateway_timeout_secs 慢5xx判定阈值·默认90 / gateway_max_retries 慢5xx最多重试·默认2
- *      环境变量 GPT_API_KEY / GPT_BASE_URL / GPT_READ_TIMEOUT / GPT_MAX_RETRIES
- *      / GPT_GATEWAY_TIMEOUT_SECS / GPT_GATEWAY_MAX_RETRIES 优先级更高。
+ *      环境变量 GPT_API_KEY / GPT_BASE_URL / GPT_IMAGE_MODEL / GPT_READ_TIMEOUT / GPT_MAX_RETRIES
+ *      / GPT_GATEWAY_TIMEOUT_SECS / GPT_GATEWAY_MAX_RETRIES 优先级更高；
+ *      命令行 --model 优先级最高。
  *
  * 稳定性设计（2026-07-03）：
  *   - 网关超时快速失败：上游生图 >~125s 会被它自家网关掐成 5xx（524/504等），
@@ -57,6 +62,31 @@ const C = { g: '\x1b[1;32m', y: '\x1b[1;33m', r: '\x1b[1;31m', b: '\x1b[1;36m', 
 
 const SIZES = ['1024x1024', '1536x1024', '1024x1536', '2048x2048',
   '2048x1152', '1152x2048', '3840x2160', '2160x3840'];
+
+// ── 出图档位（gpt-image-2.5，2026-09-09 上线，取代 gpt-image-2）────────
+// 实测（2026-09-09 经 https://tikbit.ai/v1）：
+//   两档在 /models 列表里；/generations 与 /edits 参数与 2 代完全一致，只换 model 字段；
+//   sunburst 约 30~50s、flare 约 16~26s；3840x2160 起真实出 4K（2 代静默降级到 2048）。
+// 别名让用户/AI 能用中文选档，不必背模型型号。
+const MODELS = {
+  '精细': 'gpt-image-2.5-sunburst',
+  '快速': 'gpt-image-2.5-flare',
+};
+const MODEL_ALIASES = {
+  '精细': '精细', '精致': '精细', 'fine': '精细', 'sunburst': '精细',
+  'gpt-image-2.5-sunburst': '精细',
+  '快速': '快速', '快': '快速', 'fast': '快速', 'flare': '快速',
+  'gpt-image-2.5-flare': '快速',
+};
+const DEFAULT_MODEL_KEY = '精细';
+
+/** 把用户写的档位（中文别名 / 英文 / 完整型号）解析成真实模型 id；认不出返回 null。 */
+function resolveModel(raw) {
+  if (!raw) return null;
+  const key = MODEL_ALIASES[String(raw).trim().toLowerCase()]
+    ?? MODEL_ALIASES[String(raw).trim()];
+  return key ? MODELS[key] : null;
+}
 
 // 网关/上游超时类状态码：这类 5xx 多半是"上游生图太慢被网关掐"，重试同一路径意义不大
 const GATEWAY_TIMEOUT_CODES = new Set([502, 503, 504, 520, 522, 524]);
@@ -97,7 +127,7 @@ AI 会自动帮你写进配置文件，然后你就能正常生图了。
 // ── 读配置 ──────────────────────────────────────────────
 function loadConfig() {
   const cfg = {
-    base_url: '', api_key: '', image_model: 'gpt-image-2', output_dir: '',
+    base_url: '', api_key: '', image_model: MODELS[DEFAULT_MODEL_KEY], output_dir: '',
     read_timeout: '300', max_retries: '5',
     gateway_timeout_secs: '90', gateway_max_retries: '2',
   };
@@ -108,12 +138,21 @@ function loadConfig() {
     }
   } catch (_) { /* 没配置就走环境变量 / 引导 */ }
 
+  // 老配置里可能还写着已下架的 gpt-image-2（或它的 4K/count 变体），
+  // 原样发出去只会换回 400。静默升级到默认档，不让用户为上游换代买单。
+  if (/^gpt-image-2(?![.\d])/.test(cfg.image_model)) {
+    cfg.image_model = MODELS[DEFAULT_MODEL_KEY];
+  }
+
   if (process.env.GPT_API_KEY) cfg.api_key = process.env.GPT_API_KEY;
   if (process.env.GPT_BASE_URL) cfg.base_url = process.env.GPT_BASE_URL;
   if (process.env.GPT_READ_TIMEOUT) cfg.read_timeout = process.env.GPT_READ_TIMEOUT;
   if (process.env.GPT_MAX_RETRIES) cfg.max_retries = process.env.GPT_MAX_RETRIES;
   if (process.env.GPT_GATEWAY_TIMEOUT_SECS) cfg.gateway_timeout_secs = process.env.GPT_GATEWAY_TIMEOUT_SECS;
   if (process.env.GPT_GATEWAY_MAX_RETRIES) cfg.gateway_max_retries = process.env.GPT_GATEWAY_MAX_RETRIES;
+  if (process.env.GPT_IMAGE_MODEL) {
+    cfg.image_model = resolveModel(process.env.GPT_IMAGE_MODEL) ?? process.env.GPT_IMAGE_MODEL;
+  }
 
   if (!cfg.api_key || !cfg.base_url) {
     printNoApiHelp();
@@ -328,10 +367,11 @@ async function runPool(items, concurrency, worker) {
 }
 
 // ── 批量生图：并发 + 回执汇总，返回退出码 ──────────────
-async function runBatch(tasks, size, refPaths, cfg, concurrency) {
+async function runBatch(tasks, size, refPaths, cfg, concurrency, modelKey = '') {
   const total = tasks.length;
   concurrency = Math.max(1, Math.min(concurrency, total));
-  console.log(`🎨 批量生成 ${total} 张，并发上限 ${concurrency}（避免打爆上游）...`);
+  const tag = modelKey ? `${modelKey}档，` : '';
+  console.log(`🎨 批量生成 ${total} 张，${tag}并发上限 ${concurrency}（避免打爆上游）...`);
   let done = 0;
   const results = await runPool(tasks, concurrency, async (task, i) => {
     const r = await runOne(task.prompt, task.name, size, refPaths, cfg, `${i + 1}/${total}`);
@@ -361,13 +401,14 @@ async function runBatch(tasks, size, refPaths, cfg, concurrency) {
 
 // ── 极简参数解析 ────────────────────────────────────────
 function parseArgs(argv) {
-  const out = { _: [], size: '1024x1024', output: null, reference: null, batch: null, concurrency: 3 };
+  const out = { _: [], size: '1024x1024', output: null, reference: null, batch: null, concurrency: 3, model: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--size') out.size = argv[++i];
     else if (a === '--output' || a === '-o') out.output = argv[++i];
     else if (a === '--reference' || a === '-r') out.reference = argv[++i];
     else if (a === '--batch') out.batch = argv[++i];
+    else if (a === '--model' || a === '-m') out.model = argv[++i];
     else if (a === '--concurrency') out.concurrency = Math.max(1, parseInt(argv[++i], 10) || 3);
     else out._.push(a);
   }
@@ -391,6 +432,19 @@ async function main() {
     process.exit(1);
   }
   const cfg = loadConfig();
+
+  // --model 优先级最高：显式选了档位就按它走，配置和环境变量都让位。
+  // 写错档位名要立即失败并列出可选值，别默默用默认档出一堆不是用户要的图。
+  if (args.model) {
+    const resolved = resolveModel(args.model);
+    if (!resolved) {
+      process.stderr.write(`${C.r}❌ 不认识的出图档位 "${args.model}"，可选：精细（更精致·稍慢）/ 快速（更快·适合批量）${C.n}\n`);
+      process.exit(1);
+    }
+    cfg.image_model = resolved;
+  }
+  const modelKey = Object.keys(MODELS).find(k => MODELS[k] === cfg.image_model) || cfg.image_model;
+
   const refPaths = resolveRefs(args.reference);
 
   // ── 批量模式 ──
@@ -406,18 +460,18 @@ async function main() {
       process.stderr.write(`${C.r}❌ 清单里没有有效任务（每行：文件名<Tab或|>描述，或仅描述）${C.n}\n`);
       process.exit(1);
     }
-    process.exit(await runBatch(tasks, args.size, refPaths, cfg, args.concurrency));
+    process.exit(await runBatch(tasks, args.size, refPaths, cfg, args.concurrency, modelKey));
   }
 
   // ── 单张模式 ──
   const prompt = args._.join(' ').trim();
   if (!prompt) {
-    process.stderr.write('用法：node gpt-image.js "图片描述" [--size 1024x1024] [--output 文件名] [--reference 参考图.png]\n' +
-      '      批量：node gpt-image.js --batch 任务清单.txt --concurrency 3\n');
+    process.stderr.write('用法：node gpt-image.js "图片描述" [--size 1024x1024] [--output 文件名] [--reference 参考图.png] [--model 精细|快速]\n' +
+      '      批量：node gpt-image.js --batch 任务清单.txt --concurrency 3 --model 快速\n');
     process.exit(1);
   }
   const mode = refPaths ? '编辑' : '生成';
-  console.log(`🎨 ${mode}中：${prompt.slice(0, 60)}...`);
+  console.log(`🎨 ${mode}中（${modelKey}档）：${prompt.slice(0, 60)}...`);
   const r = await runOne(prompt, args.output, args.size, refPaths, cfg);
   if (r.ok) {
     console.log(`${C.g}✅ 已保存：${r.path}${C.n}  (${Math.round(r.seconds)}s)`);

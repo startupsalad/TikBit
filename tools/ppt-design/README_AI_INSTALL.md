@@ -174,7 +174,7 @@ fi
 ---
 base_url: https://tikbit.ai/v1
 api_key: 复用的工作台令牌
-image_model: gpt-image-2
+image_model: gpt-image-2.5-sunburst
 ---
 ```
 

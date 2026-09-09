@@ -20,6 +20,24 @@ description: TikBit AI 工作台对话式 GPT 生图工具。用户要求生成�
 
 如果用户只是问创意、要写提示词，先给文字方案，不调用 API。涉及付费调用时，先确认画面内容、尺寸、数量和输出位置。
 
+## 出图档位：本轮第一次生图前先问
+
+模型有两档，速度和精细度是真实取舍（实测 2026-09-09）：
+
+| 档位 | 模型 | 单张耗时 | 适合 |
+|---|---|---|---|
+| 精细 | `gpt-image-2.5-sunburst` | 约 30~50s | 对客物料、正式海报、要交付的成品 |
+| 快速 | `gpt-image-2.5-flare` | 约 16~26s | 草稿、占位图、探索方向、批量出图 |
+
+规则：
+
+1. **本轮对话第一次要生图时，先用一句话问用户**：要快一些还是精细一些。别列参数表，就问这一句。
+2. **用户答过之后，同一话题后续生图直接沿用，不再重复问。** 用户中途说“这次快点/这张要精细”就当场切换，并沿用到之后。
+3. 用户已经在需求里说清了（“先出几张草稿看看方向”“这张是给客户的成品”），**不用多问一遍**，按语义选档并在回复里一句话说明选了哪档。
+4. 批量出图（`--batch`）默认建议快速档，出图后再挑中的用精细档重出。
+
+命令行用 `--model 精细` / `--model 快速`（也认 `fast` / `flare` / `sunburst`）。不带 `--model` 时走配置里的默认档（精细）。
+
 ## 调用规则
 
 执行器位置：`~/.tikbit/gpt-image/gpt-image.js`。Windows 将 `~` 展开为用户目录。
@@ -27,13 +45,13 @@ description: TikBit AI 工作台对话式 GPT 生图工具。用户要求生成�
 ### 单张文生图
 
 ```text
-node ~/.tikbit/gpt-image/gpt-image.js "<经过整理的图片描述>" --size 1024x1024 --output "<项目相对路径>.png"
+node ~/.tikbit/gpt-image/gpt-image.js "<经过整理的图片描述>" --size 1024x1024 --model 精细 --output "<项目相对路径>.png"
 ```
 
 ### 参考图编辑
 
 ```text
-node ~/.tikbit/gpt-image/gpt-image.js "<修改要求>" --reference "<参考图路径>" --output "<项目相对路径>.png"
+node ~/.tikbit/gpt-image/gpt-image.js "<修改要求>" --reference "<参考图路径>" --model 精细 --output "<项目相对路径>.png"
 ```
 
 多张参考图用逗号分隔。不要把用户未授权的私人图片上传到 API。
@@ -41,10 +59,15 @@ node ~/.tikbit/gpt-image/gpt-image.js "<修改要求>" --reference "<参考图�
 ### 批量生成
 
 ```text
-node ~/.tikbit/gpt-image/gpt-image.js --batch "<任务清单路径>" --concurrency 3
+node ~/.tikbit/gpt-image/gpt-image.js --batch "<任务清单路径>" --concurrency 3 --model 快速
 ```
 
 默认并发 3；上游报 429 或慢 5xx 时降到 1，不要盲目提高并发。
+
+### 尺寸档位
+
+上游约束：最长边 ≤ 3840，总像素 ≤ 8,294,400。`3840x2160` 会返回真实 4K
+（旧的 gpt-image-2 会静默降级到 2048，2.5 起不再降级）。`4096x4096` 和 `3840x3840` 都会被 400 拒绝。
 
 ## 提示词处理
 

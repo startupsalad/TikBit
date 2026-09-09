@@ -47,8 +47,12 @@ node %USERPROFILE%/.tikbit/gpt-image/gpt-image.js
 ```text
 node ~/.tikbit/gpt-image/gpt-image.js "图片描述" --size 1024x1024 --output "输出路径.png"
 node ~/.tikbit/gpt-image/gpt-image.js "修改描述" --reference "参考图.png" --output "输出路径.png"
-node ~/.tikbit/gpt-image/gpt-image.js --batch "任务清单.txt" --concurrency 3
+node ~/.tikbit/gpt-image/gpt-image.js --batch "任务清单.txt" --concurrency 3 --model 快速
 ```
+
+出图档位用 `--model 精细|快速`（精细 = `gpt-image-2.5-sunburst`，更精致稍慢；
+快速 = `gpt-image-2.5-flare`，更快、适合批量）。不写时用 `config.json` 里的默认档。
+详见 `SKILL.md`「出图档位」一节。
 
 Windows 请把 `~/.tikbit` 展开为用户目录，或使用 PowerShell 可解析的完整路径。输出路径优先使用当前项目/知识库内的明确相对路径，避免把交付图片散落在工具目录。
 
@@ -58,7 +62,7 @@ Windows 请把 `~/.tikbit` 展开为用户目录，或使用 PowerShell 可解�
 {
   "base_url": "https://tikbit.ai/v1",
   "api_key": "复用工作台令牌或用户自备的 TikBit 令牌",
-  "image_model": "gpt-image-2"
+  "image_model": "gpt-image-2.5-sunburst"
 }
 ```
 
