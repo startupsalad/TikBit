@@ -43,11 +43,22 @@ test('config model is preserved; Image 2 is not silently upgraded', t => {
   assert.equal(loadConfig({home,env:{}}).image_model,'gpt-image-2-4K');
   assert.equal(resolveModel('gpt-image-2'), 'gpt-image-2'); assert.equal(resolveModel('快速'),'gpt-image-2.5-flare');
 });
+test('Image 2.5 fine is the default while saved models and environment choices retain priority', t => {
+  const home=sandbox(t), env={GPT_API_KEY:'synthetic-default-test',GPT_BASE_URL:'https://example.invalid/v1'};
+  assert.equal(loadConfig({home,env}).image_model,'gpt-image-2.5-sunburst');
+  const cfg=path.join(home,'.tikbit/gpt-image/config.json');
+  json(cfg,{api_key:'synthetic-local',base_url:'https://example.invalid/v1'});
+  assert.equal(loadConfig({home,env:{}}).image_model,'gpt-image-2.5-sunburst');
+  json(cfg,{api_key:'synthetic-local',base_url:'https://example.invalid/v1',image_model:'gpt-image-2'});
+  assert.equal(loadConfig({home,env:{}}).image_model,'gpt-image-2');
+  assert.equal(loadConfig({home,env:{GPT_IMAGE_MODEL:'快速'}}).image_model,'gpt-image-2.5-flare');
+  assert.equal(resolveModel('精细'),'gpt-image-2.5-sunburst');
+});
 test('fresh install puts executable at canonical path and resident skills in both engines', t => {
   const home=sandbox(t); install({home});
   assert.ok(fs.existsSync(path.join(home,'.tikbit/gpt-image/gpt-image.js')));
   for (const e of ['claude','codex']) assert.ok(fs.existsSync(path.join(home,'.tikbit',e,'skills/gpt-image/SKILL.md')));
-  const cfg=JSON.parse(fs.readFileSync(path.join(home,'.tikbit/gpt-image/config.json'))); assert.equal(cfg.api_key,''); assert.equal(cfg.image_model,'gpt-image-2');
+  const cfg=JSON.parse(fs.readFileSync(path.join(home,'.tikbit/gpt-image/config.json'))); assert.equal(cfg.api_key,''); assert.equal(cfg.image_model,'gpt-image-2.5-sunburst');
 });
 test('repeat install preserves user config, output and old nested install', t => {
   const home=sandbox(t); const base=path.join(home,'.tikbit/gpt-image'); json(path.join(base,'config.json'),{api_key:'synthetic-user',output_dir:'keep',image_model:'custom'});
@@ -102,7 +113,7 @@ test('registered vault discovery works for both Windows and macOS layouts', t=>{
 test('synthetic CLI generation exercises request and image save without network', t=>{
  const home=sandbox(t); install({home});
  const preload=path.join(home,'synthetic-fetch.cjs'), output=path.join(home,'deliverable','sample.png');
- fs.writeFileSync(preload, `global.fetch=async (url,options)=>{if(url!=='https://example.invalid/v1/images/generations')throw new Error('Unexpected endpoint');const body=JSON.parse(options.body);if(body.model!=='gpt-image-2'||body.prompt!=='synthetic test')throw new Error('Unexpected request');return new Response(JSON.stringify({data:[{b64_json:Buffer.from('synthetic-image-bytes').toString('base64')}]}),{status:200,headers:{'content-type':'application/json'}});};`);
- const result=spawnSync(process.execPath,['--require',preload,path.join(home,'.tikbit/gpt-image/gpt-image.js'),'synthetic test','--output',output],{encoding:'utf8',env:{...process.env,USERPROFILE:home,HOME:home,GPT_API_KEY:'synthetic-e2e',GPT_BASE_URL:'https://example.invalid/v1',GPT_IMAGE_MODEL:'gpt-image-2'}});
+ fs.writeFileSync(preload, `global.fetch=async (url,options)=>{if(url!=='https://example.invalid/v1/images/generations')throw new Error('Unexpected endpoint');const body=JSON.parse(options.body);if(body.model!=='gpt-image-2.5-sunburst'||body.prompt!=='synthetic test')throw new Error('Unexpected request');return new Response(JSON.stringify({data:[{b64_json:Buffer.from('synthetic-image-bytes').toString('base64')}]}),{status:200,headers:{'content-type':'application/json'}});};`);
+ const result=spawnSync(process.execPath,['--require',preload,path.join(home,'.tikbit/gpt-image/gpt-image.js'),'synthetic test','--output',output],{encoding:'utf8',env:{...process.env,USERPROFILE:home,HOME:home,GPT_API_KEY:'synthetic-e2e',GPT_BASE_URL:'https://example.invalid/v1',GPT_IMAGE_MODEL:''}});
  assert.equal(result.status,0,result.stderr); assert.equal(fs.readFileSync(output,'utf8'),'synthetic-image-bytes');
 });

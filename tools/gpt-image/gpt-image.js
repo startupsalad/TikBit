@@ -14,7 +14,7 @@
  *   # 文字生图
  *   node gpt-image.js "一只可爱的柴犬" --size 1024x1024 --output 柴犬
  *
- *   # 出图档位（--model，二选一；不写用配置里的默认档）
+ *   # 出图档位（--model；不写沿用配置，未配置时默认 2.5 精细档）
  *   node gpt-image.js "产品海报" --model 精细   # gpt-image-2.5-sunburst，更精致、稍慢
  *   node gpt-image.js "占位插图" --model 快速   # gpt-image-2.5-flare，更快、适合批量
  *
@@ -77,7 +77,7 @@ const MODEL_ALIASES = {
   '快速': '快速', '快': '快速', 'fast': '快速', 'flare': '快速',
   'gpt-image-2.5-flare': '快速',
 };
-const DEFAULT_MODEL_KEY = '标准';
+const DEFAULT_MODEL_KEY = '精细';
 
 /** 把用户写的档位（中文别名 / 英文 / 完整型号）解析成真实模型 id；认不出返回 null。 */
 function resolveModel(raw) {
@@ -385,7 +385,7 @@ function resolveRefs(reference) {
 // ── 入口 ────────────────────────────────────────────────
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.help) { console.log('用法：node gpt-image.js "图片描述" [--model gpt-image-2|精细|快速] [--output 路径]；--check 只检查本机配置，不联网不计费。'); return; }
+  if (args.help) { console.log('用法：node gpt-image.js "图片描述" [--model 精细|快速|gpt-image-2] [--output 路径]；未配置模型时默认 gpt-image-2.5-sunburst；--check 只检查本机配置，不联网不计费。'); return; }
   if (!SIZES.includes(args.size)) {
     process.stderr.write(`${C.r}❌ 不支持的尺寸 ${args.size}，可选：${SIZES.join(' / ')}${C.n}\n`);
     process.exit(1);

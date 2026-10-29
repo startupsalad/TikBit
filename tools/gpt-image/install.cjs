@@ -53,7 +53,7 @@ function install({home=os.homedir(), source=__dirname, vaults=[], discoverVaults
     const src=path.join(source,n), dst=path.join(target,n);
     if (path.resolve(src)!==path.resolve(dst)) fs.copyFileSync(src,dst);
   }
-  if (!fs.existsSync(cfg)) fs.writeFileSync(cfg,JSON.stringify({api_key:'',base_url:'https://tikbit.ai/v1',image_model:'gpt-image-2',output_dir:''},null,2)+'\n',{flag:'wx',mode:0o600});
+  if (!fs.existsSync(cfg)) fs.writeFileSync(cfg,JSON.stringify({api_key:'',base_url:'https://tikbit.ai/v1',image_model:'gpt-image-2.5-sunburst',output_dir:''},null,2)+'\n',{flag:'wx',mode:0o600});
   const all=[...new Set([...(Array.isArray(old.settings)?old.settings:[]),...settings])];
   fs.writeFileSync(refs,JSON.stringify({settings:all},null,2)+'\n',{mode:0o600});
   for (const e of ['claude','codex']) {
