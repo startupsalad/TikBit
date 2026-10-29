@@ -1,36 +1,23 @@
-# GPT 生图工具包
+# TikBit 对话生图工具 1.2.0
 
-给 **TikBit AI 工作台** 使用的对话式生图工具。用户直接在 AI 对话中提出需求，AI 自动调用本工具，不需要用户打开图片工作室或手动敲命令。
+零依赖 Node.js CLI，支持文生图、参考图编辑和小批次任务；工作台内通过 `gpt-image` Skill 调用。
 
-## 能力
+```sh
+node install.cjs --vault "知识库完整路径"
+node ~/.tikbit/gpt-image/gpt-image.js --check
+node ~/.tikbit/gpt-image/gpt-image.js "画面描述" --model gpt-image-2 --output "项目/图片/成品.png"
+```
 
-- 文生图：根据描述生成一张图片
-- 参考图编辑：替换风格、背景、元素，或合成多张参考图
-- 批量生图：读取任务清单并按并发上限生成多张
-- 两档出图速度可选：**精细**（更精致、稍慢）/ **快速**（更快、适合批量），AI 在对话里先问一次再沿用
-- 支持 Windows 和 macOS，Node.js 18+ 自带 `fetch`，无需额外 npm 依赖
+## 1.2.0 修复
 
-## 出图档位
+- 统一执行入口，安装与老用户修复共用同一安装器；Windows/macOS 均支持。
+- 两引擎常驻 Skill；只登记本机工作台配置位置，不复制令牌、不覆盖已有密钥和图片。
+- 专用图片配置优先；工作台凭据只成对用于受信任的 TikBit HTTPS 端点。
+- 保留用户模型；默认 Image 2，2.5 网关精细/快速档需要显式选择。模型列表可见不等于分组生成权限可用。
+- `--check` 为本机离线诊断；同名图片自动加序号；不要求用户在聊天里发送密钥。
 
-| 档位 | 模型 | 单张耗时 | 适合 |
-|:---:|:---|:---:|:---|
-| 精细（默认） | `gpt-image-2.5-sunburst` | 约 30~50s | 对客物料、正式海报、交付成品 |
-| 快速 | `gpt-image-2.5-flare` | 约 16~26s | 草稿、占位图、探索方向、批量出图 |
+专用配置位于 `~/.tikbit/gpt-image/config.json`，环境变量 GPT_API_KEY/GPT_BASE_URL/GPT_IMAGE_MODEL 可覆盖对应项。`--model` 优先级最高。
 
-命令行用 `--model 精细|快速`；不写时走 `config.json` 的默认档。
-`3840x2160` 可出真实 4K（旧的 gpt-image-2 会静默降级到 2048）。
+`--size` 指定尺寸，`--reference` 指定逗号分隔参考图，`--batch` 指定每行“文件名 | 图片描述”的任务清单，`--concurrency` 控制并发。生成前确认需求与费用；验证配置和安装不会调用生成接口。
 
-## 和图片工作室的区别
-
-| 工具 | 适合场景 |
-|:---:|:---|
-| GPT 生图工具包 | AI 在对话中按任务自动生图、改图、批量出图 |
-| 图片工作室 | 用户手动操作、单张图片快速尝试 |
-
-## 安全边界
-
-- API Key 只保存在用户本机的 `~/.tikbit/gpt-image/config.json` 或环境变量中。
-- 本工具包不包含真实密钥，也不会把密钥写入输出、日志或 Git 仓库。
-- 每次实际调用付费 API 前，AI 应先确认用户的图片需求、尺寸和数量。
-
-详细安装和调用规则见 [`INSTALL.md`](INSTALL.md) 与 [`SKILL.md`](SKILL.md)。
+安装详情见 INSTALL.md。离线回归：`node --test integration.test.cjs`。

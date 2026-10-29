@@ -52,6 +52,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { readJson, resolveCredentials } = require('./image-config.cjs');
 
 // ── 路径 ────────────────────────────────────────────────
 const PKG_DIR = path.join(os.homedir(), '.tikbit', 'gpt-image');
@@ -63,26 +64,25 @@ const C = { g: '\x1b[1;32m', y: '\x1b[1;33m', r: '\x1b[1;31m', b: '\x1b[1;36m', 
 const SIZES = ['1024x1024', '1536x1024', '1024x1536', '2048x2048',
   '2048x1152', '1152x2048', '3840x2160', '2160x3840'];
 
-// ── 出图档位（gpt-image-2.5，2026-09-09 上线，取代 gpt-image-2）────────
-// 实测（2026-09-09 经 https://tikbit.ai/v1）：
-//   两档在 /models 列表里；/generations 与 /edits 参数与 2 代完全一致，只换 model 字段；
-//   sunburst 约 30~50s、flare 约 16~26s；3840x2160 起真实出 4K（2 代静默降级到 2048）。
-// 别名让用户/AI 能用中文选档，不必背模型型号。
+// ── 模型选项：保留用户选择；网关别名可用性取决于用户分组 ──
 const MODELS = {
+  '标准': 'gpt-image-2',
   '精细': 'gpt-image-2.5-sunburst',
   '快速': 'gpt-image-2.5-flare',
 };
 const MODEL_ALIASES = {
+  '标准': '标准', 'gpt-image-2': '标准',
   '精细': '精细', '精致': '精细', 'fine': '精细', 'sunburst': '精细',
   'gpt-image-2.5-sunburst': '精细',
   '快速': '快速', '快': '快速', 'fast': '快速', 'flare': '快速',
   'gpt-image-2.5-flare': '快速',
 };
-const DEFAULT_MODEL_KEY = '精细';
+const DEFAULT_MODEL_KEY = '标准';
 
 /** 把用户写的档位（中文别名 / 英文 / 完整型号）解析成真实模型 id；认不出返回 null。 */
 function resolveModel(raw) {
   if (!raw) return null;
+  if (/^gpt-image-[a-zA-Z0-9.-]+$/.test(String(raw).trim())) return String(raw).trim();
   const key = MODEL_ALIASES[String(raw).trim().toLowerCase()]
     ?? MODEL_ALIASES[String(raw).trim()];
   return key ? MODELS[key] : null;
@@ -94,71 +94,23 @@ const GATEWAY_TIMEOUT_CODES = new Set([502, 503, 504, 520, 522, 524]);
 // 明确的"立即失败"错误（4xx 客户端错误 / 快速失败），不参与重试、批量据此记账
 class GenerationError extends Error {}
 
-// ── API 缺失时的友好引导 ────────────────────────────────
-function printNoApiHelp() {
-  process.stderr.write(`
-============================================================
-⚠️  GPT 生图功能还没配置 API（首次使用，跟着提示走 1 分钟搞定）
-============================================================
-
-👉 最简单的方式：直接跟你的 AI 助手说一句：
-
-   "我的 GPT API 网址是 https://tikbit.ai/v1
-    密钥是 sk-yyy
-    帮我填进生图配置"
-
-AI 会自动帮你写进配置文件，然后你就能正常生图了。
-你不需要自己打开任何文件、不需要懂代码。
-
-------------------------------------------------------------
-还没有 API？去「创业沙拉 AI 算力平台」新建一个（1 分钟）：
-
-   1. 打开  https://tikbit.ai
-   2. 新建一个 API 密钥（sk- 开头）
-   3. ⭐ 务必确认这个 API 「包含 GPT 模型」（gpt-image 系列），
-      否则只能生成文字、不能生图
-   4. 把网址和密钥发给你的 AI，让它帮你填进配置
-
-如果配置遇到问题，请联系你的 TikBit 工作台管理员，不要把密钥发到公开聊天或代码仓库。
-============================================================
-`);
-}
-
-// ── 读配置 ──────────────────────────────────────────────
-function loadConfig() {
+// ── 读取本机配置；不复制工作台令牌，不输出凭证 ────────────
+function loadConfig({home = os.homedir(), env = process.env} = {}) {
   const cfg = {
     base_url: '', api_key: '', image_model: MODELS[DEFAULT_MODEL_KEY], output_dir: '',
-    read_timeout: '300', max_retries: '5',
-    gateway_timeout_secs: '90', gateway_max_retries: '2',
+    read_timeout: '300', max_retries: '5', gateway_timeout_secs: '90', gateway_max_retries: '2',
   };
-  try {
-    const j = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-    for (const k of Object.keys(cfg)) {
-      if (j[k] !== undefined && j[k] !== null) cfg[k] = String(j[k]);
-    }
-  } catch (_) { /* 没配置就走环境变量 / 引导 */ }
-
-  // 老配置里可能还写着已下架的 gpt-image-2（或它的 4K/count 变体），
-  // 原样发出去只会换回 400。静默升级到默认档，不让用户为上游换代买单。
-  if (/^gpt-image-2(?![.\d])/.test(cfg.image_model)) {
-    cfg.image_model = MODELS[DEFAULT_MODEL_KEY];
+  const file = path.join(home, '.tikbit/gpt-image/config.json');
+  if (fs.existsSync(file)) {
+    let value;
+    try { value = readJson(file); } catch { throw new Error('生图 config.json 损坏；请修正本机配置，不会自动重置或覆盖密钥。'); }
+    for (const k of Object.keys(cfg)) if (value[k] !== undefined && value[k] !== null) cfg[k] = String(value[k]);
   }
-
-  if (process.env.GPT_API_KEY) cfg.api_key = process.env.GPT_API_KEY;
-  if (process.env.GPT_BASE_URL) cfg.base_url = process.env.GPT_BASE_URL;
-  if (process.env.GPT_READ_TIMEOUT) cfg.read_timeout = process.env.GPT_READ_TIMEOUT;
-  if (process.env.GPT_MAX_RETRIES) cfg.max_retries = process.env.GPT_MAX_RETRIES;
-  if (process.env.GPT_GATEWAY_TIMEOUT_SECS) cfg.gateway_timeout_secs = process.env.GPT_GATEWAY_TIMEOUT_SECS;
-  if (process.env.GPT_GATEWAY_MAX_RETRIES) cfg.gateway_max_retries = process.env.GPT_GATEWAY_MAX_RETRIES;
-  if (process.env.GPT_IMAGE_MODEL) {
-    cfg.image_model = resolveModel(process.env.GPT_IMAGE_MODEL) ?? process.env.GPT_IMAGE_MODEL;
+  Object.assign(cfg, resolveCredentials(cfg, env, {home}));
+  for (const [k,v] of Object.entries({GPT_READ_TIMEOUT:'read_timeout', GPT_MAX_RETRIES:'max_retries', GPT_GATEWAY_TIMEOUT_SECS:'gateway_timeout_secs', GPT_GATEWAY_MAX_RETRIES:'gateway_max_retries'})) {
+    if (env[k]) cfg[v] = env[k];
   }
-
-  if (!cfg.api_key || !cfg.base_url) {
-    printNoApiHelp();
-    process.exit(1);
-  }
-  cfg.base_url = cfg.base_url.replace(/\/+$/, '');
+  if (env.GPT_IMAGE_MODEL) cfg.image_model = resolveModel(env.GPT_IMAGE_MODEL) || env.GPT_IMAGE_MODEL;
   return cfg;
 }
 
@@ -318,8 +270,12 @@ function saveImage(imgBytes, outputName, cfg) {
     ? (path.isAbsolute(name) ? name : path.resolve(process.cwd(), name))
     : path.join(getOutputDir(cfg), name);
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, imgBytes);
-  return outPath;
+  const ext = path.extname(outPath), stem = outPath.slice(0, -ext.length);
+  for (let i=0; ; i++) {
+    const candidate = i ? `${stem}-${i}${ext}` : outPath;
+    try { fs.writeFileSync(candidate, imgBytes, {flag:'wx'}); return candidate; }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
+  }
 }
 
 // ── 生成并保存一张（单张/批量共用，绝不抛出）──────────
@@ -404,7 +360,9 @@ function parseArgs(argv) {
   const out = { _: [], size: '1024x1024', output: null, reference: null, batch: null, concurrency: 3, model: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--size') out.size = argv[++i];
+    if (a === '--check') out.check = true;
+    else if (a === '--help' || a === '-h') out.help = true;
+    else if (a === '--size') out.size = argv[++i];
     else if (a === '--output' || a === '-o') out.output = argv[++i];
     else if (a === '--reference' || a === '-r') out.reference = argv[++i];
     else if (a === '--batch') out.batch = argv[++i];
@@ -427,6 +385,7 @@ function resolveRefs(reference) {
 // ── 入口 ────────────────────────────────────────────────
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.help) { console.log('用法：node gpt-image.js "图片描述" [--model gpt-image-2|精细|快速] [--output 路径]；--check 只检查本机配置，不联网不计费。'); return; }
   if (!SIZES.includes(args.size)) {
     process.stderr.write(`${C.r}❌ 不支持的尺寸 ${args.size}，可选：${SIZES.join(' / ')}${C.n}\n`);
     process.exit(1);
@@ -438,11 +397,12 @@ async function main() {
   if (args.model) {
     const resolved = resolveModel(args.model);
     if (!resolved) {
-      process.stderr.write(`${C.r}❌ 不认识的出图档位 "${args.model}"，可选：精细（更精致·稍慢）/ 快速（更快·适合批量）${C.n}\n`);
+      process.stderr.write(`${C.r}❌ 不认识的出图档位 "${args.model}"，可选：gpt-image-2 / 精细 / 快速，或明确的 gpt-image 模型名${C.n}\n`);
       process.exit(1);
     }
     cfg.image_model = resolved;
   }
+  if (args.check) { console.log(JSON.stringify({ready:true, model:cfg.image_model, credential_source:cfg.credential_source, network:false})); return; }
   const modelKey = Object.keys(MODELS).find(k => MODELS[k] === cfg.image_model) || cfg.image_model;
 
   const refPaths = resolveRefs(args.reference);
@@ -481,7 +441,8 @@ async function main() {
   }
 }
 
-main().catch(e => {
+module.exports = { loadConfig, resolveModel, saveImage };
+if (require.main === module) main().catch(e => {
   process.stderr.write(`${C.r}❌ 出错：${e.message}${C.n}\n`);
   process.exit(1);
 });

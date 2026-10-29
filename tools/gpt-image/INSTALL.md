@@ -1,69 +1,13 @@
-# GPT 生图工具包安装
+# GPT 生图工具安装与修复
 
-本工具包仅面向 **TikBit AI 工作台**，支持 Windows 和 macOS。安装动作由 AI 执行，用户不需要手动复制文件或运行命令。
+需要 Node.js 22+（工作台自带）。安装前说明用途与行为，获得用户同意；安装不调用生图接口、不计费。
 
-## 给 TikBit AI 的安装指令
+1. 下载本目录完整内容到本机工具目录，不复制示例密钥，不在聊天中索取或发送真实密钥。
+2. 执行 `node install.cjs --vault "知识库完整路径"`；也可 `node install.cjs --discover` 从 Obsidian 注册表发现已登记库，不全盘扫描。
+3. 工具落到 `~/.tikbit/gpt-image/`；Claude/GPT 常驻 Skill 分别落到 `~/.tikbit/claude/skills/gpt-image/`、`~/.tikbit/codex/skills/gpt-image/`。工作台使用隔离配置目录；已有知识库入口规则、笔记和插件状态均不改写。
+4. 已有 config.json、密钥、模型、输出图片和旧嵌套安装保留。首次创建空密钥配置；仅登记工作台配置路径，不复制令牌。工作台换密钥后按当前本机配置读取，不缓存旧密钥。
+5. 从目标库重新开启 AI 对话，执行 `node "<用户目录>/.tikbit/gpt-image/gpt-image.js" --check`。成功只证明本机配置可用，不证明账号模型权限、余额或真实生成成功。
 
-1. 先向用户说明：这是对话式 GPT 生图工具包，会调用用户自己的 API 额度；安装不会自动产生费用。
-2. 确认用户同意安装后，检查 Node.js 版本：
+自定义服务必须在本机自行设置完整的 GPT_API_KEY/GPT_BASE_URL；不会把 TikBit 工作台令牌发送给自定义网址。修复器不读取官方 Claude/Codex 账号配置，不修改凭据或全局 hooks。
 
-```text
-node --version
-```
-
-需要 Node.js 18 或更高版本。TikBit 工作台自带 Node 时直接使用；没有时提示用户安装 Node.js 18+，不要静默下载未知二进制。
-
-3. 将本目录的 `gpt-image.js` 复制到用户目录：
-
-```text
-Windows: %USERPROFILE%/.tikbit/gpt-image/gpt-image.js
-macOS:  ~/.tikbit/gpt-image/gpt-image.js
-```
-
-同时将 `config.example.json` 复制为同目录的 `config.json`（只在 `config.json` 不存在时创建）。
-
-4. 将本目录 `SKILL.md` 注册到 TikBit AI 工作台的工具/Skill 目录，使后续对话可按触发规则自动调用。不要注册到其他 AI 客户端的全局配置。
-
-5. 配置 API。本工具走创业沙拉 TikBit 中转站，**优先复用工作台已有的令牌，不要向用户索取密钥**：
-
-   - 先读环境变量 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL`；取不到时读本机 Claude 配置 `settings.json` 的 `env` 字段（Windows 在 `%USERPROFILE%/.claude/settings.json`，macOS 在 `~/.claude/settings.json`）。
-   - 确认 `ANTHROPIC_BASE_URL` 的主机是 `tikbit.ai` 才可复用。指向官方 Anthropic 端点的令牌对生图接口无效，此时请用户自行提供 TikBit 令牌。
-   - 把令牌写入 `config.json` 的 `api_key`，并把 `base_url` 写成 `https://tikbit.ai/v1`。工具会在其后拼接 `/images/generations`，**缺少 `/v1` 会 404**。
-   - 复用成功后只回报“已复用工作台令牌”，不得在聊天记录、仓库或日志中回显完整密钥。
-   - 告诉用户：生图消耗的是工作台同一份额度。
-
-   工作台令牌不可用时，才退回让用户提供；也支持环境变量 `GPT_API_KEY`、`GPT_BASE_URL` 覆盖 `config.json`。
-
-6. 安装验证：运行无密钥检查（不会发起网络请求）：
-
-```text
-node %USERPROFILE%/.tikbit/gpt-image/gpt-image.js
-```
-
-预期结果是提示“GPT 生图功能还没配置 API”，而不是 Node 语法错误。完成后告诉用户：以后直接在 TikBit 对话里说“生成一张……”即可。
-
-## AI 调用入口
-
-```text
-node ~/.tikbit/gpt-image/gpt-image.js "图片描述" --size 1024x1024 --output "输出路径.png"
-node ~/.tikbit/gpt-image/gpt-image.js "修改描述" --reference "参考图.png" --output "输出路径.png"
-node ~/.tikbit/gpt-image/gpt-image.js --batch "任务清单.txt" --concurrency 3 --model 快速
-```
-
-出图档位用 `--model 精细|快速`（精细 = `gpt-image-2.5-sunburst`，更精致稍慢；
-快速 = `gpt-image-2.5-flare`，更快、适合批量）。不写时用 `config.json` 里的默认档。
-详见 `SKILL.md`「出图档位」一节。
-
-Windows 请把 `~/.tikbit` 展开为用户目录，或使用 PowerShell 可解析的完整路径。输出路径优先使用当前项目/知识库内的明确相对路径，避免把交付图片散落在工具目录。
-
-## API 配置示例
-
-```json
-{
-  "base_url": "https://tikbit.ai/v1",
-  "api_key": "复用工作台令牌或用户自备的 TikBit 令牌",
-  "image_model": "gpt-image-2.5-sunburst"
-}
-```
-
-`config.example.json` 只有空密钥示例；仓库不含任何真实密钥。密钥来源优先级：工作台已配置的 TikBit 令牌 > 用户自行提供。
+已有用户无需重装工作台，可单独运行本目录 install.cjs。JSON 损坏、路径不可写或安装包缺文件时会失败并返回非零，不静默重置用户配置。付费生成测试、上传和发布另行确认。
