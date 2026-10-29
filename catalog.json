@@ -32,9 +32,10 @@
     "workstation_relay": {
       "meaning": "复用本机 TikBit 工作台已配置的令牌，用户不需要另外提供密钥。",
       "steps_for_ai": [
-        "先读环境变量 ANTHROPIC_AUTH_TOKEN 和 ANTHROPIC_BASE_URL；取不到时读本机 Claude 配置文件 settings.json 的 env 字段。",
-        "确认 ANTHROPIC_BASE_URL 的主机是 tikbit.ai 才可复用；指向官方 Anthropic 端点的令牌对生图接口无效，此时请用户自行提供 TikBit 令牌。",
-        "写入工具配置时 base_url 必须补成 https://tikbit.ai/v1，工具会在其后拼接 /images/generations，缺少 /v1 会 404。",
+        "优先遵循目标工具的 INSTALL.md 与 Skill；gpt-image 的专用 GPT_API_KEY/GPT_BASE_URL 和已有生图配置优先。",
+        "未设置专用凭据时，仅成对复用工作台传入的 ANTHROPIC_AUTH_TOKEN（或 ANTHROPIC_API_KEY）/ANTHROPIC_BASE_URL、OPENAI_API_KEY/OPENAI_BASE_URL；自动复用仅限 HTTPS 的 tikbit.ai，不向自定义地址发送工作台令牌。",
+        "gpt-image 无运行时凭据时，用其 install.cjs 登记目标知识库，仅保存配置路径并在运行时读取当前工作台配置；不复制令牌，不读取官方 Claude/Codex 用户目录凭据，多账号不一致时不擅自选择。",
+        "受信任 TikBit 生图地址规范为 https://tikbit.ai/v1；缺配置先执行本机修复，自定义服务使用用户在本机设置的专用密钥，不要求用户把密钥发到聊天。",
         "全程不在对话、日志或仓库中回显完整密钥，只回报是否复用成功。",
         "告知用户：生图消耗的是工作台同一份额度。"
       ]
