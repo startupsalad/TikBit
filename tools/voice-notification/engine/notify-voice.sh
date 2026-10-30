@@ -4,7 +4,10 @@
 # Self-contained: locate everything relative to this script.
 #   <dir>/notify-voice.sh   <dir>/voice_clips/<voice>/<type>.mp3
 #   <dir>/choice.txt (chosen voice)   <dir>/.flag (long-task marker)
-# Usage: notify-voice.sh <mode> ["custom text"]
+# Usage: notify-voice.sh <mode> ["custom text" | --dry-run]
+# TIKBIT_VAULT_ROOT opts into exact visible-tab identity; unknown callers mute.
+# Without it, generic clients work; standalone Codex workers are rejected using
+# local session_meta. TIKBIT_VOICE_SUPPRESS=1 silences delegated branches.
 #   modes: done | stuck | error | perm | wait
 #          ask                      (PreToolUse: need a decision -- AskUserQuestion/ExitPlanMode)
 #          flag | done-if-flagged   (long-task gating, for Claude Code Stop hook)
@@ -73,74 +76,107 @@ play_clip() {
   speak_text "$(fb_text "$key")"
 }
 
-# Resolve which Claudian tab we are, so the announcement can say "对话N".
-# Opt-in: set TIKBIT_VAULT_ROOT to the Obsidian vault root. Unset = feature off,
-# prints 0, and everything behaves exactly like the single-tab version.
-# Mirrors Get-TabIndex in notify-voice.ps1 -- keep the two in sync.
-tab_index() {
-  local sid="${CLAUDE_CODE_SESSION_ID:-$CODEX_THREAD_ID}"
-  [ -z "$sid" ] && { echo 0; return; }
-  [ -z "$TIKBIT_VAULT_ROOT" ] && { echo 0; return; }
-  command -v python3 >/dev/null 2>&1 || { echo 0; return; }
+# Resolve one verified visible tab, or a verified standalone Codex main thread.
+# All parsing is read-only; Python 3 is only required for identity-aware calls.
+resolve_context() {
+  if [ "${TIKBIT_VOICE_SUPPRESS:-}" = "1" ]; then
+    printf 'false\t0\texplicit-suppression\n'; return
+  fi
+  if [ -z "${TIKBIT_VAULT_ROOT:-}" ] && [ -z "${CODEX_THREAD_ID:-}" ]; then
+    printf 'true\t0\tstandalone\n'; return
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf 'false\t0\tpython3-required\n'; return
+  fi
+  python3 - <<'PY' 2>/dev/null || printf 'false\t0\tcontext-read-failed\n'
+import datetime as dt
+import json, os, re
+from pathlib import Path
 
-  TV_SID="$sid" python3 - "$TIKBIT_VAULT_ROOT" <<'PY' 2>/dev/null || echo 0
-import json, os, sys
-root = sys.argv[1]
-sid  = os.environ.get("TV_SID", "")
-sessions = os.path.join(root, ".claudian", "sessions")
-data     = os.path.join(root, ".obsidian", "plugins", "tikbit-claudian", "data.json")
-if not (sid and os.path.isdir(sessions) and os.path.isfile(data)):
-    print(0); raise SystemExit
-try:
-    with open(data, encoding="utf-8") as f:
-        tabs = json.load(f).get("tabManagerState", {}).get("openTabs") or []
-except Exception:
-    print(0); raise SystemExit
+def emit(allowed, tab, reason):
+    print(('true' if allowed else 'false') + '\t' + str(tab) + '\t' + reason)
 
-# openTabs order IS the number the user sees. Only touch those few meta files;
-# the sessions dir grows into the hundreds and most entries are closed chats.
-fresh_slot, fresh_stamp = 0, -1
-for i, tab in enumerate(tabs):
-    cid = str(tab.get("conversationId") or "")
-    if not cid:
-        continue
-    meta_path = os.path.join(sessions, cid + ".meta.json")
-    if not os.path.isfile(meta_path):
-        continue
+def tab_index(root, sid):
+    if not sid:
+        return 0
     try:
-        with open(meta_path, encoding="utf-8") as f:
-            meta = json.load(f)
-    except Exception:
-        continue
-    ps = meta.get("providerState") or {}
-    ids = [str(meta.get("sessionId") or ""),
-           str(ps.get("providerSessionId") or ""),
-           str(ps.get("threadId") or "")]
-    if sid in [x for x in ids if x]:
-        print(i + 1); raise SystemExit
-    # No id on disk = that tab never finished a turn = "fresh" candidate.
-    if not any(ids):
-        try:
-            stamp = int(meta.get("updatedAt") or 0)
-        except (TypeError, ValueError):
-            stamp = 0
-        if stamp >= fresh_stamp:
-            fresh_stamp, fresh_slot = stamp, i + 1
+        with open(Path(root) / '.obsidian/plugins/tikbit-claudian/data.json', encoding='utf-8-sig') as f:
+            tabs = json.load(f).get('tabManagerState', {}).get('openTabs') or []
+        slot = 0
+        for i, tab in enumerate(tabs):
+            cid = str(tab.get('conversationId') or '')
+            if not cid or cid in ('.', '..') or re.search(r'[\\/:*?"<>|]', cid):
+                continue
+            try:
+                with open(Path(root) / '.claudian/sessions' / (cid + '.meta.json'), encoding='utf-8-sig') as f:
+                    meta = json.load(f)
+                ps = meta.get('providerState') or {}
+                ids = (meta.get('sessionId'), ps.get('providerSessionId'), ps.get('threadId'))
+                if sid in ids:
+                    if slot:
+                        return 0
+                    slot = i + 1
+            except (OSError, ValueError, TypeError, AttributeError):
+                continue
+        return slot
+    except (OSError, ValueError, TypeError, AttributeError):
+        return 0
 
-# Fallback by elimination: on a brand-new conversation's FIRST turn the plugin
-# has not written sessionId yet, so the exact match above always misses. The
-# newest not-yet-persisted tab is the only unclaimed slot -- that is us.
-print(fresh_slot)
+def codex_kind(tid):
+    if not re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', tid):
+        return 'unknown'
+    home = Path.home()
+    roots = [Path(x) for x in (os.environ.get('CODEX_HOME'), home / '.codex', home / '.tikbit/codex') if x]
+    now = dt.datetime.now().astimezone()
+    dates = {now.strftime('%Y/%m/%d'), (now - dt.timedelta(days=1)).strftime('%Y/%m/%d')}
+    if tid[14] == '7':
+        try:
+            born = dt.datetime.fromtimestamp(int(tid.replace('-', '')[:12], 16) / 1000, dt.timezone.utc)
+            dates.update((born.strftime('%Y/%m/%d'), born.astimezone().strftime('%Y/%m/%d')))
+        except (ValueError, OverflowError, OSError):
+            pass
+    main = False
+    for root in roots:
+        for date in dates:
+            try:
+                files = (root / 'sessions' / date).glob('rollout-*-' + tid + '.jsonl')
+                for file in files:
+                    try:
+                        with file.open(encoding='utf-8-sig') as f:
+                            record = json.loads(f.readline())
+                        payload = record.get('payload') or {}
+                        if record.get('type') != 'session_meta' or payload.get('id') != tid:
+                            continue
+                        source = payload.get('source')
+                        if payload.get('parent_thread_id') or source == 'subagent' or isinstance(source, dict) and source.get('subagent'):
+                            return 'subagent'
+                        if isinstance(source, str) and source.strip():
+                            main = True
+                    except (OSError, ValueError, TypeError, AttributeError):
+                        continue
+            except OSError:
+                continue
+    return 'main' if main else 'unknown'
+
+root = os.environ.get('TIKBIT_VAULT_ROOT', '').strip()
+tid = os.environ.get('CODEX_THREAD_ID', '').strip()
+sid = tid or os.environ.get('CLAUDE_CODE_SESSION_ID', '')
+if root:
+    slot = tab_index(root, sid)
+    emit(slot > 0, slot, 'exact-visible-tab' if slot else 'no-unique-visible-tab')
+else:
+    kind = codex_kind(tid)
+    emit(kind == 'main', 0, 'codex-' + kind if kind != 'unknown' else 'codex-context-unverified')
 PY
 }
 
 # Announce with the tab number when we can work out which tab we are.
-# Degrades in three steps: pregenerated dialogN_<key>.mp3 -> spoken labelled
-# phrase -> plain generic clip (only when the tab feature is off/unresolvable).
+# Verified slots use a numbered clip or one labelled phrase.
+# Generic audio is reserved for standalone use, never unmatched opted-in tabs.
 announce() {
   local key="$1"
-  local slot="${2:-0}"
-  [ "$slot" -eq 0 ] 2>/dev/null && slot="$(tab_index)"
+  [ "$VOICE_ALLOWED" = "true" ] || return 0
+  local slot="$VOICE_TAB"
   case "$slot" in ''|*[!0-9]*) slot=0 ;; esac
 
   if [ "$slot" -ge 1 ]; then
@@ -161,6 +197,15 @@ announce() {
 }
 
 MODE="${1:-done}"
+# --- context gate ---
+IFS=$'\t' read -r VOICE_ALLOWED VOICE_TAB VOICE_REASON <<< "$(resolve_context)"
+case "$VOICE_TAB" in ''|*[!0-9]*) VOICE_ALLOWED=false; VOICE_TAB=0; VOICE_REASON=context-read-failed ;; esac
+if [ "${2:-}" = "--dry-run" ] || [ "$MODE" = "--dry-run" ]; then
+  case "$VOICE_ALLOWED" in true|false) ;; *) VOICE_ALLOWED=false ;; esac
+  printf '{"allowed":%s,"tab":%s,"reason":"%s"}\n' "$VOICE_ALLOWED" "$VOICE_TAB" "$VOICE_REASON"
+  exit 0
+fi
+[ "$VOICE_ALLOWED" = "true" ] || exit 0
 case "$MODE" in
   flag) touch "$FLAG"; exit 0 ;;
   done)  announce done ;;
@@ -169,7 +214,7 @@ case "$MODE" in
   wait)  announce wait ;;
   ask)   announce ask ;;
   perm)
-    # a caller that already knows the tab index may pass it as $2
+    # Legacy explicit slot cannot override caller identity.
     announce perm "${2:-0}" ;;
   done-if-flagged)
     if [ -f "$FLAG" ]; then rm -f "$FLAG"; announce done; fi ;;

@@ -29,7 +29,7 @@ https://github.com/startupsalad/TikBit
 
 | 工具 | 适合场景 |
 |:---|:---|
-| `voice-notification` | 同时跑多个任务，或经常等待几分钟以上 |
+| `voice-notification` | 主对话完成/等待提醒；0.3.1增加子任务隔离、精确标签编号与安全更新 |
 | `writing-humanizer` | 经常写文案、陈述稿、讲稿和其他对外文字 |
 
 ### 按需

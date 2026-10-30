@@ -5,7 +5,7 @@
 做三件事：
   1) 把 engine/ 和 voice_clips/ 复制到本机固定位置 ~/.task-voice/（路径统一、不依赖同步盘）
   2) 让用户选音色（试听 + 存 choice.txt）
-  3) 检测到 Claude Code 就备份并接好钩子（Stop/Notification/PreToolUse）；其它客户端打印一行手动说明
+  3) 检测到 Claude Code 就备份并接好钩子（Notification/PreToolUse，不接Stop自动完成）；其它客户端打印一行手动说明
 全程零外部依赖，只用 Python 标准库。
 """
 import json, os, platform, shutil, subprocess, sys, time
@@ -34,6 +34,7 @@ def copy_assets():
     for f in (SRC / "engine").iterdir():
         if f.is_file():
             shutil.copy2(f, DEST / f.name)
+    shutil.copy2(SRC / "VERSION", DEST / "VERSION")
     # 复制 voice_clips（整目录）
     dst_clips = DEST / "voice_clips"
     if dst_clips.exists():
@@ -148,12 +149,13 @@ def wire_settings_json(settings, label):
         changed = True
     
     # 新增：gate 授权检测钩子（matcher *）
-    if not already("PreToolUse", "notify-gate"):
+    gate_available = (DEST / ("notify-gate.ps1" if IS_WIN else "notify-gate.sh")).is_file()
+    if gate_available and not already("PreToolUse", "notify-gate"):
         hooks.setdefault("PreToolUse", []).append(
             {"matcher": "*",
              "hooks": [{"type": "command", "command": gate_command("arm")}]})
         changed = True
-    if not already("PostToolUse", "notify-gate"):
+    if gate_available and not already("PostToolUse", "notify-gate"):
         hooks.setdefault("PostToolUse", []).append(
             {"matcher": "*",
              "hooks": [{"type": "command", "command": gate_command("clear")}]})
@@ -161,8 +163,8 @@ def wire_settings_json(settings, label):
     
     if changed:
         settings.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        log(f"[OK] {label} 已接钩子：Notification→等待/PreToolUse→让你拿主意+授权检测gate")
-        log("  完成播报由 AI 干完那轮主动喊 done（见『给AI的安装指令.md』第 4 步）。")
+        log(f"[OK] {label} 已接通知/决策钩子" + ("，包含可用授权监测gate" if gate_available else "；平台无gate引擎，未写无效授权监测"))
+        log("  完成播报只由主对话整轮交付时喊 done，子代理禁止播报（见安装指令第5步）。")
         log(f"  提示：需重启 {label} 才生效。")
     return True
 
@@ -204,12 +206,13 @@ def wire_hooks_json(hooks_file, label):
         changed = True
     
     # gate 授权检测
-    if not already("PreToolUse", "notify-gate"):
+    gate_available = (DEST / ("notify-gate.ps1" if IS_WIN else "notify-gate.sh")).is_file()
+    if gate_available and not already("PreToolUse", "notify-gate"):
         hooks.setdefault("PreToolUse", []).append(
             {"matcher": "*",
              "hooks": [{"type": "command", "command": gate_command("arm")}]})
         changed = True
-    if not already("PostToolUse", "notify-gate"):
+    if gate_available and not already("PostToolUse", "notify-gate"):
         hooks.setdefault("PostToolUse", []).append(
             {"matcher": "*",
              "hooks": [{"type": "command", "command": gate_command("clear")}]})
@@ -217,7 +220,7 @@ def wire_hooks_json(hooks_file, label):
     
     if changed:
         hooks_file.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        log(f"[OK] {label} 已接钩子：Notification→等待/PreToolUse→让你拿主意+授权检测gate")
+        log(f"[OK] {label} 已接通知/决策钩子" + ("，包含可用授权监测gate" if gate_available else "；平台无gate引擎，未写无效授权监测"))
         log(f"  提示：{label} 可能需要重启才生效。")
     return True
 
@@ -242,7 +245,7 @@ def main():
     log("\n==== 完成 ====")
     if wired:
         log("Claude Code 用户：重启后，等待/授权/让你拿主意会语音提醒；")
-        log("  任务完成播报由 AI 干完那轮主动喊 done——把『给AI的安装指令.md』给你的 AI，让它更新记忆规则。")
+        log("  任务完成播报只由主对话整轮交付时喊 done，子代理禁止播报——把『给AI的安装指令.md』给你的 AI，让它更新记忆规则。")
     else:
         log("没检测到 Claude Code。如果你用别的 AI 客户端：")
         log("  把『给AI的安装指令.md』丢给你的 AI，让它把通知命令接到对应位置；")

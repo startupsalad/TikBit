@@ -18,9 +18,14 @@
 #   clicking through tabs to find it. Unset the variable and this is all inert.
 #   Numbered clips come from gen-clips.py; the clip wording and the spoken
 #   fallback in $SFX must stay identical.
+#   Opted-in but unresolved callers stay silent; no guessed or anonymous tab.
+#   Standalone Codex reads local session_meta to reject workers; other clients
+#   keep generic playback. TIKBIT_VOICE_SUPPRESS=1 silences an entire branch.
+#   -DryRun reports the decision without audio or writes.
 param(
   [string]$Mode = "done",
-  [string]$B64  = ""
+  [string]$B64  = "",
+  [switch]$DryRun
 )
 $ErrorActionPreference = "SilentlyContinue"
 
@@ -96,66 +101,100 @@ function Play-Clip([string]$key) {
   if (-not (Play-File $mp3)) { Speak-Sapi $FB[$key] }
 }
 
-# Resolve which Claudian tab this session is, so the clip can say "对话N".
-# Opt-in: set TIKBIT_VAULT_ROOT to the Obsidian vault root. Unset = feature off,
-# returns 0, everything below behaves exactly like the single-tab version.
+# Identity takes precedence over legacy caller-supplied slot numbers.
+function Get-CallerSessionId {
+  if (-not [string]::IsNullOrWhiteSpace($env:CODEX_THREAD_ID)) { return $env:CODEX_THREAD_ID }
+  return $env:CLAUDE_CODE_SESSION_ID
+}
+
 function Get-TabIndex {
-  $sid = $env:CLAUDE_CODE_SESSION_ID
-  if ([string]::IsNullOrWhiteSpace($sid)) {
-    $sid = $env:CODEX_THREAD_ID
-  }
-  if ([string]::IsNullOrWhiteSpace($sid)) { return 0 }
+  $sid = Get-CallerSessionId
   $vaultRoot = $env:TIKBIT_VAULT_ROOT
-  if ([string]::IsNullOrWhiteSpace($vaultRoot)) { return 0 }
-
-  $sessionsDir = $vaultRoot + "/.claudian/sessions"
-  $dataPath    = $vaultRoot + "/.obsidian/plugins/tikbit-claudian/data.json"
-  if (-not (Test-Path $sessionsDir)) { return 0 }
-  if (-not (Test-Path $dataPath))    { return 0 }
-
-  # openTabs order IS the number the user sees, so read the tab list and only
-  # touch those few meta files (never scan the whole sessions dir -- it grows
-  # into the hundreds and most entries are closed conversations).
+  if ([string]::IsNullOrWhiteSpace($sid) -or [string]::IsNullOrWhiteSpace($vaultRoot)) { return 0 }
+  $sessionsDir = Join-Path $vaultRoot '.claudian/sessions'
+  $dataPath = Join-Path $vaultRoot '.obsidian/plugins/tikbit-claudian/data.json'
   try {
-    $data = Get-Content $dataPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $data = Get-Content -LiteralPath $dataPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     $tabs = @($data.tabManagerState.openTabs)
   } catch { return 0 }
-  if ($tabs.Count -eq 0) { return 0 }
-
-  [int64]$freshStamp = -1
-  $freshSlot = 0
-
+  $slot = 0
   for ($i = 0; $i -lt $tabs.Count; $i++) {
-    $cid = "$($tabs[$i].conversationId)"
-    if ([string]::IsNullOrWhiteSpace($cid)) { continue }
-    $metaPath = Join-Path $sessionsDir ($cid + ".meta.json")
-    if (-not (Test-Path $metaPath)) { continue }
-    try { $meta = Get-Content $metaPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { continue }
-
-    $mSid = "$($meta.sessionId)"
-    $pSid = ""
-    $threadSid = ""
+    $cid = [string]$tabs[$i].conversationId
+    if ([string]::IsNullOrWhiteSpace($cid) -or $cid -match '[\\/:*?"<>|]' -or $cid -eq '.' -or $cid -eq '..') { continue }
+    try {
+      $meta = Get-Content -LiteralPath (Join-Path $sessionsDir ($cid + '.meta.json')) -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    } catch { continue }
+    $ids = @([string]$meta.sessionId)
     if ($meta.providerState) {
-      $pSid = "$($meta.providerState.providerSessionId)"
-      $threadSid = "$($meta.providerState.threadId)"
+      $ids += [string]$meta.providerState.providerSessionId
+      $ids += [string]$meta.providerState.threadId
     }
-
-    if ($mSid -eq $sid -or $pSid -eq $sid -or $threadSid -eq $sid) { return ($i + 1) }
-
-    # No sessionId on disk = that tab has never finished a turn = "fresh" candidate.
-    if ([string]::IsNullOrWhiteSpace($mSid) -and [string]::IsNullOrWhiteSpace($pSid) -and [string]::IsNullOrWhiteSpace($threadSid)) {
-      [int64]$stamp = 0
-      [int64]::TryParse("$($meta.updatedAt)", [ref]$stamp) | Out-Null
-      if ($stamp -ge $freshStamp) { $freshStamp = $stamp; $freshSlot = $i + 1 }
+    if ($ids -contains $sid) {
+      if ($slot -gt 0) { return 0 }
+      $slot = $i + 1
     }
   }
+  return $slot
+}
 
-  # Fallback by elimination: on a brand-new conversation's FIRST turn the plugin
-  # has not written sessionId yet, so the exact match above always misses. The
-  # newest not-yet-persisted tab is the only unclaimed slot -- that is us.
-  # Without this the whole tab feature silently dies on first turns.
-  if ($freshSlot -gt 0) { return $freshSlot }
-  return 0
+# Standalone Codex still needs main/worker isolation. Read only session_meta in
+# bounded date directories; never recursively scan history or output its content.
+function Get-CodexThreadKind {
+  $tid = $env:CODEX_THREAD_ID
+  if ($tid -notmatch '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$') { return 'unknown' }
+  $roots = @($env:CODEX_HOME, (Join-Path $env:USERPROFILE '.codex'), (Join-Path $env:USERPROFILE '.tikbit/codex')) |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
+  $dates = @((Get-Date).ToString('yyyy/MM/dd', [Globalization.CultureInfo]::InvariantCulture), (Get-Date).AddDays(-1).ToString('yyyy/MM/dd', [Globalization.CultureInfo]::InvariantCulture))
+  if ($tid.Substring(14, 1) -eq '7') {
+    try {
+      $ms = [Convert]::ToInt64($tid.Replace('-', '').Substring(0, 12), 16)
+      $created = [DateTimeOffset]::FromUnixTimeMilliseconds($ms)
+      $dates += $created.UtcDateTime.ToString('yyyy/MM/dd', [Globalization.CultureInfo]::InvariantCulture)
+      $dates += $created.LocalDateTime.ToString('yyyy/MM/dd', [Globalization.CultureInfo]::InvariantCulture)
+    } catch {}
+  }
+  $dates = @($dates | Select-Object -Unique)
+  $mainSeen = $false
+  foreach ($homePath in $roots) {
+    foreach ($date in $dates) {
+      $dir = Join-Path $homePath ('sessions/' + $date)
+      if (-not (Test-Path -LiteralPath $dir -PathType Container)) { continue }
+      foreach ($file in @(Get-ChildItem -LiteralPath $dir -File -Filter ('rollout-*-' + $tid + '.jsonl') -ErrorAction SilentlyContinue)) {
+        $stream = $null; $reader = $null
+        try {
+          $stream = [IO.File]::Open($file.FullName, [IO.FileMode]::Open, [IO.FileAccess]::Read, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+          $reader = New-Object IO.StreamReader($stream, [Text.Encoding]::UTF8)
+          $line = $reader.ReadLine()
+          $record = $line | ConvertFrom-Json -ErrorAction Stop
+          if ($record.type -ne 'session_meta' -or $record.payload.id -ne $tid) { continue }
+          $source = $record.payload.source
+          if ($record.payload.parent_thread_id -or ($source -isnot [string] -and $source.subagent) -or $source -eq 'subagent') { return 'subagent' }
+          if ($source -is [string] -and -not [string]::IsNullOrWhiteSpace($source)) { $mainSeen = $true }
+        } catch {} finally {
+          if ($reader) { $reader.Dispose() } elseif ($stream) { $stream.Dispose() }
+        }
+      }
+    }
+  }
+  if ($mainSeen) { return 'main' }
+  return 'unknown'
+}
+
+function Get-VoiceContext {
+  $allowed = $false; $tab = 0; $reason = 'no-unique-visible-tab'
+  if ($env:TIKBIT_VOICE_SUPPRESS -eq '1') { $reason = 'explicit-suppression' }
+  elseif (-not [string]::IsNullOrWhiteSpace($env:TIKBIT_VAULT_ROOT)) {
+    $tab = Get-TabIndex
+    if ($tab -gt 0) { $allowed = $true; $reason = 'exact-visible-tab' }
+  }
+  elseif (-not [string]::IsNullOrWhiteSpace($env:CODEX_THREAD_ID)) {
+    $kind = Get-CodexThreadKind
+    if ($kind -eq 'main') { $allowed = $true; $reason = 'codex-main' }
+    elseif ($kind -eq 'subagent') { $reason = 'codex-subagent' }
+    else { $reason = 'codex-context-unverified' }
+  }
+  else { $allowed = $true; $reason = 'standalone' }
+  return [pscustomobject]@{ allowed = $allowed; tab = $tab; reason = $reason; caller = (Get-CallerSessionId); voice = $voice }
 }
 
 # Spoken suffix per type, used only when the pregenerated numbered clip is absent.
@@ -172,11 +211,11 @@ $PRE  = "5a+56K+d"   # 对话
 $NUMS = @("5LiA","5LqM","5LiJ","5Zub","5LqU","5YWt","5LiD","5YWr","5Lmd","5Y2B")  # 一..十
 
 # Announce with the tab number when we can work out which tab we are.
-# Degrades in three steps: pregenerated dialogN_<key>.mp3 -> generic clip + spoken
-# number -> plain generic clip (only when the tab feature is off/unresolvable).
+# Verified tabs: numbered MP3 -> one numbered SAPI phrase.
+# Generic clips are only for verified/identity-free standalone use.
 function Announce([string]$key, [int]$knownSlot = 0) {
-  $slot = $knownSlot
-  if ($slot -eq 0) { $slot = Get-TabIndex }
+  if (-not $script:VoiceContext.allowed) { return }
+  $slot = $script:VoiceContext.tab
 
   if ($slot -ge 1) {
     $mp3 = Join-Path $clipDir ("claudian_multitab\dialog" + $slot + "_" + $key + ".mp3")
@@ -194,6 +233,12 @@ function Announce([string]$key, [int]$knownSlot = 0) {
   Play-Clip $key
 }
 
+# --- context gate ---
+# All modes are gated before audio, stdin consumption or flag writes.
+$script:VoiceContext = Get-VoiceContext
+if ($DryRun) { $script:VoiceContext | ConvertTo-Json -Compress; exit 0 }
+if (-not $script:VoiceContext.allowed) { exit 0 }
+
 # --- flag-only operation (no sound) ---
 if ($Mode -eq "flag") {
   New-Item -ItemType File -Path $flagPath -Force | Out-Null
@@ -208,7 +253,7 @@ switch ($Mode) {
   "wait"  { Announce "wait" }
   "ask"   { Announce "ask" }
   "perm"  {
-    # notify-gate.ps1 passes the tab index in -B64; if it cannot, Announce resolves it.
+    # Legacy B64 slot is accepted syntactically but never overrides identity.
     $slot = 0
     if (-not [string]::IsNullOrWhiteSpace($B64)) {
       [int]::TryParse($B64, [ref]$slot) | Out-Null

@@ -6,6 +6,12 @@
 
 ---
 
+## 0.3.1 安装与升级边界
+
+这是可选工具，不是插件默认功能。升级已安装用户请优先执行 `python update.py --check`，确认后执行 `python update.py`，必要时显式指定 `--target`；不要重跑整套安装覆盖用户选择、私有引擎或自定义钩子。私有改版请备份后人工合并。脚本更新与 AI 记忆规则须同时处理；插件 OTA 不会替换这套引擎。
+
+只允许主对话发出用户提醒。后台子代理不得调用 done/stuck/ask/perm/say 等模式，不得因为自己的子任务完成就宣布整项任务完成。受控子分支应设置 `TIKBIT_VOICE_SUPPRESS=1`，不要把该变量设置到主对话或全局用户环境。Codex子线程有原生身份校验；独立Claude/第三方客户端仍须由任务规则及显式分支静音兜住，不虚称全客户端自动识别。
+
 ## 第 1 步：环境检测与版本选择
 
 运行以下检测逻辑（**不要跳过**）：
@@ -66,7 +72,7 @@ cp -r voice_clips/* ~/.claude/voice_clips/
 ├── xiaoyi/
 ├── yunxi/
 ├── yunyang/
-└── claudian_multitab/   # 多标签音频，dialog1~6 × 6 种话术 = 36 个
+└── claudian_multitab/   # 多标签音频，dialog1~10 × 6 种话术 = 60 个
 ```
 
 ### C. 可选的多标签集成
@@ -75,13 +81,13 @@ cp -r voice_clips/* ~/.claude/voice_clips/
 
 播报时按 `voice_clips/claudian_multitab/dialog<N>_<话术>.mp3` 取音频，六种话术 `done / perm / stuck / wait / ask / error` 都带编号。找不到音频也不会退成"没编号"——脚本会用 SAPI 直接念出"对话N，……"，编号信息一定保留。
 
-### D. 开超过 6 个标签时补音频
+### D. 开超过 10 个标签时补音频
 
-成品只带 1~6 号。用户常开更多标签就跑 `engine/gen-clips.py` 补：
+成品带 1~10 号。用户常开更多标签就跑 `engine/gen-clips.py` 补：
 
 ```bash
 pip install edge-tts imageio-ffmpeg     # imageio-ffmpeg 自带二进制，不用装系统 ffmpeg
-python engine/gen-clips.py --start 7 --tabs 12
+python engine/gen-clips.py --start 11 --tabs 12
 
 # 只补某几种话术（不重跑已有的）
 python engine/gen-clips.py --kinds stuck,wait
@@ -112,7 +118,7 @@ python engine/gen-clips.py --kinds stuck,wait
 echo 'export TIKBIT_VAULT_ROOT="/Users/你的用户名/path/to/vault"' >> ~/.zshrc
 ```
 
-> 设完要**重启 AI 客户端**（甚至重新登录）才读得到新环境变量。没设或设错 = 多标签播报自动关闭，退回通用播报，不会报错。
+> 设完要**重启 AI 客户端**（甚至重新登录）才读得到新环境变量。未设置时按独立模式处理；已设置却路径错误或身份不唯一时静音，不退到匿名播报。
 
 ### 3.2 验证语法和取值
 
@@ -123,10 +129,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "
     (Resolve-Path ~/.claude/notify-voice.ps1), [ref]\$null, [ref]\$errs)
   if (\$errs) { \$errs } else { 'Parser OK' }"
 
-# 确认能解析出标签号（返回 >=1 说明通了，0 说明环境变量没读到或标签列表为空）
-powershell -NoProfile -ExecutionPolicy Bypass -Command "
-  . ~/.claude/notify-voice.ps1 -Mode nosuchmode 2>&1 | Out-Null
-  'Get-TabIndex -> ' + (Get-TabIndex)"
+# 只读检查：allowed=true且tab>=1才是当前可见主对话；不再点源脚本猜号
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME/.claude/notify-voice.ps1" -Mode done -DryRun
+# Mac：bash "$HOME/.claude/notify-voice.sh" done --dry-run
 ```
 
 ---
@@ -228,17 +233,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "
 
 ## 第 5 步：更新 AI 记忆规则
 
-让 AI 记住"任务完成时主动播报"的规则。
+让 AI 记住“只有主对话整轮完成才主动播报”的规则；已有用户必须替换旧的无条件完成规则。
 
 告诉用户的 AI（通过自然语言，不需要手动编辑文件）：
 
-> **请记住**：整轮回答全部完成（所有步骤跑完、最终结果出来了）才主动运行一次：
+> **请记住**：只有直接面向用户的主对话，在整轮回答全部完成（所有步骤跑完、验证和最终答复均已就绪）时，才主动运行一次：
 > 
 > ```bash
 > powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$HOME/.claude/notify-voice.ps1" -Mode done
 > ```
 > 
-> **中途动文件不单独喊，攒到最后整轮收尾时喊一次**——用户要验收的是最终结果，不是某个中间步骤。纯聊天/纯问答不喊。
+> **子代理/后台任务禁止直接播报**：子任务做完只把结果交给主对话，不能喊 done 或改用 say/perm 绕过；确需人工介入也由主对话统一提醒。受控分支可设置 `TIKBIT_VOICE_SUPPRESS=1`（仅分支，不设全局）。
+>
+> **中途动文件不单独喊，攒到最后整轮收尾时喊一次**——用户要验收的是最终结果，不是某个中间步骤。纯聊天/纯问答不喊。编号解析失败不手填、不猜别的标签，不恢复 flag/Stop 自动播报。
+>
+> macOS收尾命令改为 `bash "$HOME/.claude/notify-voice.sh" done`；使用install.py安装的用户将目录改为 `~/.task-voice/`。
 
 ---
 
@@ -258,20 +267,15 @@ powershell -ExecutionPolicy Bypass -File ~/.claude/notify-voice.ps1 -Mode done
 ```
 
 - **通用版**：应该播"搞定啦"
-- **Claudian 版**：应该播"对话N搞定啦"（N 是当前活动标签编号 1-6）
+- **Claudian 版**：应该播"对话N搞定啦"（N 是调用者对应的真实可见标签编号，不跟随你临时切到的活动标签）
 
 ### 测试决策提醒（所有版本）
 
 让 AI 随便跑个命令，如果弹选择窗口（AskUserQuestion），应该播"需要你拿个主意"。
 
-### 查看日志
+### 无声核对身份
 
-```bash
-tail ~/.claude/voice-notify.log
-```
-
-- 通用版日志示例：`done: fallback (tab=0)`
-- Claudian 版日志示例：`done: tab3 mp3 (xiaoxiao)`
+运行第3.2节的DryRun，检查 `allowed`、`tab`、`reason`。通用分发版不写私有的voice-notify.log，不要求用户上传完整会话或日志。验证主对话放行后再按用户同意的方式试听一次；对子线程测试只检查拒播，禁止拿它反复喊“搞定”。
 
 ---
 
@@ -283,16 +287,11 @@ tail ~/.claude/voice-notify.log
 - `~/.claude/voice_clips/<音色>/done.mp3` 是否存在
 - 重新复制音频文件
 
-### Claudian 版：播的是"搞定啦"不带编号
+### Claudian 版：没有播报或编号不对
 
-正常情况下**不该出现**这种事 —— 找不到音频时脚本会用 SAPI 念出"对话N，……"，编号一定保留。真听到不带编号的，只有一种原因：**编号没解析出来**（`tab=0`）。
+先运行只读 DryRun（Windows `-Mode done -DryRun`，Mac `done --dry-run`）。`no-unique-visible-tab` 表示当前线程不属于唯一可见标签：可能是后台子任务、新主对话ID未落盘、已关闭标签、重复/损坏数据。新版会静音，不猜最新空标签、不按历史数量造号。等主对话有精确归属后由主对话正常收尾；不要清空历史表或伪造环境ID绕过门禁。
 
-| 日志 | 原因 | 怎么修 |
-|:---|:---|:---|
-| `tab=0` | 没认出标签编号 | ①`TIKBIT_VAULT_ROOT` 没设、设错、或设完没重启客户端 → 见第 3 步 ②`.claudian/sessions/` 或 `data.json` 不存在 → 确认真在 Claudian 环境 ③`openTabs` 是空的 |
-| `tab=3` 却是机械音 | 认出编号了但找不到音频，退到 SAPI 念 | 检查 `~/.claude/voice_clips/claudian_multitab/dialog3_<话术>.mp3` 在不在 —— 必须在 `claudian_multitab/` 子目录下，别摊平到 `voice_clips/` 根目录 |
-
-> 注意：**新建对话第一轮**曾经必然 `tab=0`（插件要等一轮结束才把 `sessionId` 落盘）。现已修 —— 匹配不到就取"最新那个还没落盘的标签"，日志打 `inferred fresh tab N`。只有同时存在两个全新标签时才可能编号猜错。
+未启用多标签的独立Codex，`codex-context-unverified` 表示有界原生元数据检查未能确认主线程；检查 `CODEX_HOME` 和对应线程首行session_meta，不输出完整会话内容。`codex-subagent` 是后台子任务，静音正常。Mac的 `python3-required` 表示需先安装Python3.8+；不要退回猜号。普通不带Codex身份的其他客户端仍可通用播报。
 
 ### 声音开头/结尾被切掉（"对话三搞定啦"听成"话三搞定啦"）
 
@@ -360,11 +359,11 @@ PowerShell `.ps1` 被 Git Bash 以 GBK 解析时中文会乱码。所以脚本�
 
 读 Claudian 插件自己的数据文件，**顺序是从标签列表出发**（不是扫 sessions 目录，那样在多对话下会拿错）：
 
-1. Claude 从环境变量 `CLAUDE_CODE_SESSION_ID` 拿当前会话 id；Codex 从 `CODEX_THREAD_ID` 拿当前 thread id
+1. 优先使用 `CODEX_THREAD_ID`，否则使用 `CLAUDE_CODE_SESSION_ID`，避免继承的旧Claude变量串号
 2. 读 `.obsidian/plugins/tikbit-claudian/data.json` 的 `tabManagerState.openTabs` 数组，数组顺序 = 界面上标签顺序
 3. 按顺序遍历，用每个元素的 `conversationId` 去读 `.claudian/sessions/<id>.meta.json`
-4. 该 meta 的 `sessionId`、`providerState.providerSessionId` 或 `providerState.threadId` 命中当前会话/thread → 返回它的位置（0=标签1，1=标签2…）
-5. 全都没命中 → 取上述三个 id 都还是空、且 `updatedAt` 最新的标签（**新对话第一轮**插件还没落盘 id，靠这条兜住）
+4. 该 meta 的 `sessionId`、`providerState.providerSessionId` 或 `providerState.threadId` 唯一命中当前会话/thread → 返回界面编号（第1个元素=对话1）
+5. 未命中或重复命中 → 静音。绝不按更新时间猜新标签，也不从历史登记表分配编号
 6. 播 `voice_clips/claudian_multitab/dialog<N>_<话术>.mp3`；音频缺失就用 SAPI 念"对话N，……"，编号绝不丢
 
 **零侵入**：不改插件源码，只读已有数据文件，插件更新不受影响。
@@ -375,4 +374,4 @@ PowerShell `.ps1` 被 Git Bash 以 GBK 解析时中文会乱码。所以脚本�
 
 **音色**：默认使用晓晓（zh-CN-XiaoxiaoNeural）神经语音，自然流畅。如需切换音色，运行双击 `选择语音.bat`（Windows）或 `选择语音.command`（Mac）。
 
-**更新日期**：2026-09-07（补齐 Codex thread 标签识别；修编号失效时晓晓音与系统机械音复读）
+**更新日期**：2026-10-30（0.3.1：双平台子任务门禁、唯一精确编号、独立模式兼容、无声检查及安全更新器）
