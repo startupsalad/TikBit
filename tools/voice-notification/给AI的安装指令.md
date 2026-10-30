@@ -1,8 +1,11 @@
 # 任务语音通知工具包 - AI 安装指令（统一版）
 
 > **给 AI 的话**：这是跨平台、跨客户端的语音通知工具包。会自动检测运行环境，智能选择最佳版本：
-> - 检测到 **Obsidian Claudian 插件** → 安装多标签识别版（播"对话N搞定啦"）
+> - 检测到 **Obsidian TikBit 插件** → 安装多标签识别版（播"对话N搞定啦"）
 > - 其他环境（Claude Code 桌面端 / VSCode / CodeBuddy 等） → 安装通用版
+
+> **对外名称（必须遵守）**：向用户介绍、提问、展示检测结果或汇报安装情况时，统一称为 **TikBit** 或 **TikBit AI 工作台**。例如：“TikBit 顶部的 YOLO 开关现在是开着还是关着？”
+> 下文兼容路径中的 `.claudian`、`tikbit-claudian`、`claudian_multitab` 只是内部技术标识，不是产品名称；必须保持原样，不得为了改名重命名目录、移动会话或替换插件 ID，也不得据此把用户界面称为旧名称。
 
 ---
 
@@ -23,16 +26,16 @@ import os
 # 获取当前工作目录（应该是知识库根目录）
 cwd = Path.cwd()
 
-# 检测 Claudian 插件特征
-claudian_sessions = cwd / ".claudian" / "sessions"
-claudian_data = cwd / ".obsidian" / "plugins" / "tikbit-claudian" / "data.json"
+# 检测 TikBit 插件特征
+tikbit_sessions = cwd / ".claudian" / "sessions"
+tikbit_data = cwd / ".obsidian" / "plugins" / "tikbit-claudian" / "data.json"
 
-is_claudian = claudian_sessions.exists() and claudian_data.exists()
+is_tikbit = tikbit_sessions.exists() and tikbit_data.exists()
 
-if is_claudian:
-    print("✅ 检测到 Obsidian Claudian 插件环境")
+if is_tikbit:
+    print("✅ 检测到 Obsidian TikBit 插件环境")
     print("📦 将安装：多标签识别版（支持\"对话1搞定啦\"等多标签播报）")
-    version = "claudian"
+    version = "tikbit"
 else:
     print("✅ 检测到通用环境（Claude Code / VSCode / CodeBuddy 等）")
     print("📦 将安装：通用版")
@@ -99,9 +102,9 @@ python engine/gen-clips.py --kinds stuck,wait
 
 ---
 
-## 第 3 步：设置知识库路径（**仅 Claudian 版需要**）
+## 第 3 步：设置知识库路径（**仅 TikBit 版需要**）
 
-如果 `version == "claudian"`，给用户设一个 `TIKBIT_VAULT_ROOT` 环境变量指向知识库根目录。**脚本不再内嵌任何路径**，不用改脚本内容。
+如果 `version == "tikbit"`，给用户设一个 `TIKBIT_VAULT_ROOT` 环境变量指向知识库根目录。**脚本不再内嵌任何路径**，不用改脚本内容。
 
 ### 3.1 设置环境变量（用户级、永久生效）
 
@@ -168,9 +171,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME/.claude/notify-voice.
 }
 ```
 
-### B. Claudian 版额外钩子（**开 YOLO 就别装，会误报**）
+### B. TikBit 版额外钩子（**开 YOLO 就别装，会误报**）
 
-**先问用户一句：YOLO 模式是开着的吗？**（Claudian 插件 UI 顶部那个 YOLO 开关）
+**先问用户一句：YOLO 模式是开着的吗？**（TikBit 插件 UI 顶部那个 YOLO 开关）
 
 | 用户情况 | 怎么配 |
 |:---|:---|
@@ -253,7 +256,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME/.claude/notify-voice.
 
 ## 第 6 步：重启客户端
 
-- **Obsidian Claudian** → 重启 Obsidian
+- **Obsidian TikBit** → 重启 Obsidian
 - **Claude Code 桌面端 / VSCode** → 重启客户端或终端
 
 ---
@@ -267,7 +270,7 @@ powershell -ExecutionPolicy Bypass -File ~/.claude/notify-voice.ps1 -Mode done
 ```
 
 - **通用版**：应该播"搞定啦"
-- **Claudian 版**：应该播"对话N搞定啦"（N 是调用者对应的真实可见标签编号，不跟随你临时切到的活动标签）
+- **TikBit 版**：应该播"对话N搞定啦"（N 是调用者对应的真实可见标签编号，不跟随你临时切到的活动标签）
 
 ### 测试决策提醒（所有版本）
 
@@ -287,7 +290,7 @@ powershell -ExecutionPolicy Bypass -File ~/.claude/notify-voice.ps1 -Mode done
 - `~/.claude/voice_clips/<音色>/done.mp3` 是否存在
 - 重新复制音频文件
 
-### Claudian 版：没有播报或编号不对
+### TikBit 版：没有播报或编号不对
 
 先运行只读 DryRun（Windows `-Mode done -DryRun`，Mac `done --dry-run`）。`no-unique-visible-tab` 表示当前线程不属于唯一可见标签：可能是后台子任务、新主对话ID未落盘、已关闭标签、重复/损坏数据。新版会静音，不猜最新空标签、不按历史数量造号。等主对话有精确归属后由主对话正常收尾；不要清空历史表或伪造环境ID绕过门禁。
 
@@ -318,9 +321,9 @@ rm -f ~/.claude/.voice_gate/*.pending
 
 ---
 
-## 💡 强烈建议：开启 YOLO 模式（Claudian 用户）
+## 💡 强烈建议：开启 YOLO 模式（TikBit 用户）
 
-**装完记得告诉用户开 YOLO**，在 Claudian 插件 UI 顶部那个 **YOLO** 开关。
+**装完记得告诉用户开 YOLO**，在 TikBit 插件 UI 顶部那个 **YOLO** 开关。
 
 **为什么建议开**：
 - 不用再手动授权 Write/Edit/Bash，工作流不被打断
@@ -355,9 +358,9 @@ rm -rf ~/.claude/voice_clips
 
 PowerShell `.ps1` 被 Git Bash 以 GBK 解析时中文会乱码。所以脚本里的中文播报话术一律 base64 存、运行时解码（`$SFX`/`$PRE`/`$NUMS` 三张表）。知识库路径不走这套 —— 它从 `TIKBIT_VAULT_ROOT` 环境变量读，不进脚本正文。
 
-### 为什么 Claudian 版能识别标签编号？
+### 为什么 TikBit 版能识别标签编号？
 
-读 Claudian 插件自己的数据文件，**顺序是从标签列表出发**（不是扫 sessions 目录，那样在多对话下会拿错）：
+读 TikBit 插件自己的数据文件，**顺序是从标签列表出发**（不是扫 sessions 目录，那样在多对话下会拿错）：
 
 1. 优先使用 `CODEX_THREAD_ID`，否则使用 `CLAUDE_CODE_SESSION_ID`，避免继承的旧Claude变量串号
 2. 读 `.obsidian/plugins/tikbit-claudian/data.json` 的 `tabManagerState.openTabs` 数组，数组顺序 = 界面上标签顺序
@@ -374,4 +377,4 @@ PowerShell `.ps1` 被 Git Bash 以 GBK 解析时中文会乱码。所以脚本�
 
 **音色**：默认使用晓晓（zh-CN-XiaoxiaoNeural）神经语音，自然流畅。如需切换音色，运行双击 `选择语音.bat`（Windows）或 `选择语音.command`（Mac）。
 
-**更新日期**：2026-10-30（0.3.1：双平台子任务门禁、唯一精确编号、独立模式兼容、无声检查及安全更新器）
+**更新日期**：2026-10-31（对外名称统一为 TikBit；0.3.1 引擎及兼容路径不变）
