@@ -8,6 +8,9 @@ read.py —— 统一入口：丢什么给它都能读
     python read.py 提案.pptx
     python read.py 合同.pdf
     python read.py 长图.png
+    python read.py 视频.mp4 --frames 8
+    python read.py https://weixin.qq.com/sph/example
+    python read.py https://example.com/video-page --video
     python read.py https://startupsalad.com/
     python read.py https://mp.weixin.qq.com/s/xxxx
 
@@ -28,6 +31,7 @@ read.py —— 统一入口：丢什么给它都能读
 import os
 import subprocess
 import sys
+from media_routes import MEDIA_EXTENSIONS, url_kind
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -62,6 +66,8 @@ ROUTE = {
     '.heic': 'read_img.py', '.heif': 'read_img.py', '.avif': 'read_img.py',
 }
 
+ROUTE.update({ext: 'read_video.py' for ext in MEDIA_EXTENSIONS})
+
 # 这些不用工具，Claude 的 Read 直接看就行，别多绕一道
 READ_DIRECT = {
     '.pdf': 'PDF 直接用 Read 工具打开即可（能读文字层，也能看版面）',
@@ -76,14 +82,15 @@ READ_DIRECT = {
 
 
 def is_url(s):
-    return s.startswith(('http://', 'https://'))
+    return s.lower().startswith(('http://', 'https://'))
 
 
 def pick_for_url(url):
-    """公众号链接走专用抓取（要解 JS 变量里的正文），其余走通用网页读取"""
-    if 'mp.weixin.qq.com' in url:
+    """Match parsed hosts/paths; Channels and media must precede general web."""
+    kind = url_kind(url)
+    if kind == 'article':
         return 'fetch_mp_article.py'
-    return 'read_web.py'
+    return 'read_video.py' if kind in ('channels', 'video') else 'read_web.py'
 
 
 def run(script, rest):
@@ -104,7 +111,10 @@ def main():
     target, rest = args[0], args[1:]
 
     if is_url(target):
-        script = pick_for_url(target)
+        force_video = '--video' in rest
+        if force_video:
+            rest = [arg for arg in rest if arg != '--video']
+        script = 'read_video.py' if force_video else pick_for_url(target)
         print(f'[分派] {script}', file=sys.stderr)
         return run(script, [target] + rest)
 

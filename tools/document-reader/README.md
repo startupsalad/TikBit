@@ -233,3 +233,22 @@ python fetch_mp_article.py "https://mp.weixin.qq.com/s/xxx"
 - **2026-07-21**:公众号文章读取工具初版(当时独立目录)
 - 更早:`read_ppt.py` / `read_excel.py` / `read_doc.py` / `read_web.py` 陆续成型
 
+
+## 视频、音频与视频号（0.2.0）
+
+本地MP4/MOV/MKV/WebM、MP3/WAV/M4A等已接入统一入口：
+
+```bash
+python read.py "视频.mp4" --frames 8
+python read.py "视频.mp4" --audio
+python read.py "视频.mp4" --transcribe
+python read.py "视频.mp4" --full-check --archive-dir "视频号下载" --title "实际标题" --source-url "原始链接"
+python read.py "https://weixin.qq.com/sph/example"
+python read.py "https://example.com/video-page" --video
+```
+
+本地处理用ffprobe核验、ffmpeg解码和抽帧；JSON报告列出带时间戳的帧图片，AI要再查看图片。默认最多检查开头5秒、采样8帧，不能当成全片完整性或完整内容分析。中间素材在系统临时目录，显式归档才复制视频并生成同名MD；哈希核对、重名不覆盖、原件保留。
+
+视频链接模式只返回处理流程和可用后端位置，不直接下载。视频号走 [捕获、解密与归档说明](references/video-channels.md)，安装证书、在微信播放及恢复原代理需要用户参与；公众号文章继续走原文章读取。一般视频复用工具库video-audio，不要求所有人安装模型；本地转写无需密钥，首次模型下载需要网络，云转写是用户另选的分支。
+
+新增文件：`media_routes.py`（来源识别）、`read_video.py`（本地读取及链接引导）、`media_archive.py`（不覆盖归档）、`install.py`（双引擎Skill安装）、`references/video-channels.md`（视频号流程）。`python 检查环境.py --quick` 也会报告音视频依赖状态。

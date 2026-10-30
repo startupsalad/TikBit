@@ -22,7 +22,7 @@ https://github.com/startupsalad/TikBit
 |:---|:---|
 | `must-skills` | docx、xlsx、pptx、pdf、知识库检索、Skill 创建和网页正文读取等底层能力 |
 | `html-page` | H5、推文页和落地页生成 |
-| `document-reader` | Word、Excel、PPT、PDF、图片和网页读取、解析与编辑 |
+| `document-reader` | 文档、网页及音视频统一入口；视频号抓取引导、本地校验抽帧与不覆盖归档（0.2.0） |
 | `gpt-image` | 工作台对话生图、参考图编辑及本地修复；默认 2.5 精细档（1.2.0） |
 
 ### 推荐
@@ -44,7 +44,7 @@ https://github.com/startupsalad/TikBit
 | `ppt-design` | PPT 制作 Skill 与指南 |
 | `ppt-style-gallery` | PPT 风格与 HTML 版式速查图册 |
 | `web-design` | 网页设计方法论与 Skill |
-| `video-audio` | 视频下载、抽帧和语音转文字 |
+| `video-audio` | 统一入口的按需后端：视频下载、抽帧、本地转写与视频号流程；云转写自选 |
 | `video-channels-comment` | 视频号评论批量导出与分析 |
 | `ai-voice-pack` | Claude 回复后的系统语音朗读（Claude 专用） |
 | `wechat-ai-deployment` | 个人微信/企业微信接入 AI 的统一部署手册 |

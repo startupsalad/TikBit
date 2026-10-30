@@ -34,3 +34,9 @@ node install-core.js --uninstall
 ```
 
 卸载只移除本工具写入的提示块；通用 Skill 目录不会自动删除，避免误伤其他工具的依赖。
+
+## 文档与音视频入口
+
+本包保持7项底层Skill；配套必装工具 [document-reader](../document-reader/INSTALL.md) 提供“文档读取编辑”统一入口，已补视频/音频识别、视频号捕获流程及本地核验归档。先检查是否已有入口，再用其install.py按当前引擎安装，避免重复。
+
+一般视频下载与本地转写复用 [video-audio](../video-audio/INSTALL.md)，后端依赖按需安装；不把res-downloader证书、系统代理或GB级模型作为每台机器的自动安装项。

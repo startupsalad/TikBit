@@ -1,17 +1,17 @@
 ---
 name: 文档读取编辑
 description: |
-  读取和编辑 Word / Excel / PPT / PDF / 图片 / 网址 / 公众号文章。**这是文档类任务的唯一入口**，进来后按「读还是写 × 存量还是新建 × 什么格式」往下派活。
+  读取和编辑 Word / Excel / PPT / PDF / 图片 / 网址 / 公众号文章；读取本地视频音频、视频链接和视频号，支持校验、抽帧、可选本地转写与归档。**这是文档类任务的唯一入口**，进来后按「读还是写 × 存量还是新建 × 什么格式」往下派活。
 
   **你的内置能力读不了 .pptx .xlsx .doc .xls .ppt，也读不了超大图和长条图；本机 WebFetch 也用不了（报域名校验失败）。必须走这个 skill 的脚本，绝不能回复"读不了"或让用户自己转格式。**
 
-  中文触发词（读）：读一下这个文档、看下这个文件、这个 PPT 讲了什么、帮我看看这份方案、这个表格里有什么、核对下这份报价、打开这个 PPT、看下这份标书、这个 Word 写了啥、提取这个文件的内容、这张图上写的什么、这个长图讲了什么、读这个网址、这个链接讲了什么、看下这篇公众号文章、看看竞品官网、扒一下这个页面。
+  中文触发词（读）：读一下这个文档、看下这个文件、这个 PPT 讲了什么、帮我看看这份方案、这个表格里有什么、核对下这份报价、打开这个 PPT、看下这份标书、这个 Word 写了啥、提取这个文件的内容、这张图上写的什么、这个长图讲了什么、读这个网址、这个链接讲了什么、看下这篇公众号文章、看看竞品官网、扒一下这个页面、这个视频讲了什么、读取视频号、视频下载到知识库、音频转文字。
 
   中文触发词（改/写）：改一下这个 PPT、把这份文档字号调大、这个 Word 帮我改几处、批量改字号、查哪里字号不达标、给表格加个图表、这份 BP 帮我套版、生成一份 Word 报告、做个 Excel 模板、填这个 PDF 表单。
 
   English triggers: read / open / extract this document, what does this PPT say, check this spreadsheet, read this URL, fetch this page, edit this docx / xlsx / pptx, change font size, check formatting, generate a Word report, fill a PDF form.
 
-  Use whenever the user references a document file (.docx .doc .xlsx .xls .pptx .ppt .pdf .rtf .wps .et .dps), an image that may be oversized or a long strip, a URL, or a WeChat article — for reading OR editing.
+  Use whenever the user references a document file (.docx .doc .xlsx .xls .pptx .ppt .pdf .rtf .wps .et .dps), an image that may be oversized or a long strip, a URL, or a WeChat article — for reading OR editing. Also route local video/audio, video URLs and weixin.qq.com/sph/ links; video generation is outside this skill.
 ---
 
 # 文档读取编辑
@@ -33,7 +33,7 @@ description: |
 
 | 用户想干什么 | 走哪条 |
 |:---|:---|
-| 读任何文档 / 图 / 网址 | 本 skill 的脚本，见下「怎么读」 |
+| 读任何文档 / 图 / 网址 / 视频 / 音频 | 本 skill 的脚本，见下「怎么读」 |
 | **改存量** .docx/.xlsx/.pptx，要精确定位到某个元素 | `officecli` 后端 |
 | **查** PPT/Word 哪里字号不达标 | `officecli` 的 query，见下 |
 | 新建 Word 报告 / 信函 / 模板 | `docx` 后端 |
@@ -59,6 +59,10 @@ description: |
 | 图片超大 / 长条图 / `.heic` `.bmp` `.tif` | `read_img.py <图片>`，再 Read 它输出的那些路径 |
 | 网址 | `read_web.py <网址>` |
 | `mp.weixin.qq.com` 链接 | `fetch_mp_article.py <网址>` |
+| 本地 `.mp4/.mov/.mkv/.webm/.mp3/.wav/.m4a` 等 | `read_video.py <文件>`，校验并抽帧到系统临时目录 |
+| 视频号 `weixin.qq.com/sph/...` | 先读 `{{工具包路径}}/references/video-channels.md`，引导桌面微信捕获解密后再处理本地文件 |
+| 一般视频链接 | `read.py <链接>` 给出已有video-catcher/watch后端位置，再读该Skill下载；不是已下载成功 |
+| 普通网页中的视频 | 用户明确要求视频时使用 `read.py <链接> --video`；普通文章仍按网页处理 |
 | `.pdf` `.csv` `.txt` `.md` `.json` 常规图片 | **不用脚本**，Read 直接看 |
 
 **脚本只负责转格式，内容要你自己再 Read 一遍。** 脚本打出的是产物路径，不是内容本身（抽表格、抽正文除外，那两个直接打内容）。
@@ -91,6 +95,24 @@ SPA 必须走第 3 层。实测 `startupsalad.com`（Vite+React）：curl 得 14
 ⚠️ **部分环境下 WebFetch 走不通**，报 `Unable to verify if domain ... is safe to fetch`。**别试 WebFetch，直接跑脚本。原因未查清，别脑补**——同一台机器 curl 出得去、能正常抓国内站，所以不像"网络被拦"。只说现象 + 用脚本，不要编网络层的原因。
 
 `read_web.py` 常用参数：`--links` 出链接清单摸结构 · `--render` 已知 SPA 直接渲染 · `--limit 0` 看全文 · `--raw` 要 HTML 源码 · `--out` 存档（**写系统临时目录，别落微盘**）
+
+## 音视频读取与视频号归档
+
+运行入口：
+
+```bash
+python "{{工具包路径}}/read.py" "本地视频.mp4" --frames 8
+python "{{工具包路径}}/read.py" "视频.mp4" --full-check --archive-dir "视频号下载" --title "实际标题" --source-url "原始链接"
+python "{{工具包路径}}/read.py" "视频.mp4" --audio
+python "{{工具包路径}}/read.py" "视频.mp4" --transcribe
+```
+
+- 本地处理依赖ffmpeg/ffprobe；先跑环境检查，缺依赖按具体平台补。不自动安装大模型或启动云转写。
+- JSON列出的帧图片须逐张查看。默认8张稀疏帧、开头最多5秒试解码，不代表已完整观看/全片无损；`--full-check`才全片解码。
+- 默认只在系统临时目录准备素材。显式归档才复制视频和创建同名MD，核对哈希、重名加序号、原文件保留。作者、日期、标题不猜。
+- `--transcribe`调用已安装local-transcribe；首次下载模型与CPU耗时先说明。缺Skill时读取工具库video-audio/INSTALL.md，按当前引擎安装。`CODEX_HOME`/`CLAUDE_CONFIG_DIR`优先，不猜固定官方用户目录。
+- 视频号分享链接不走普通网页或反复curl/yt-dlp。按参考说明抓取解密，证书/微信播放由用户处理；结束核对恢复原代理，未核对就写待核对。
+- video-catcher/watch只承担已有后端能力；需要云端语音API时须用户明确选择并自备密钥，不能假设工作台令牌兼容。
 
 ## 二、怎么改存量 Office 文件（officecli）
 

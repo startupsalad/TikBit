@@ -1,174 +1,30 @@
-# 视频音频处理工具包 安装指令
+# 视频音频处理工具包安装（0.2.0）
 
-> **给 AI 看的安装说明**。如果你是人类用户，请改看 `📖 使用说明.md`。
+本包为必装 [document-reader](../document-reader/INSTALL.md) 的按需后端：video-catcher负责一般网络视频下载，watch提供高级字幕/画面分析，local-transcribe提供本地转写。视频号独立走res-downloader流程，不把视频号分享链接送入通用yt-dlp或浏览器嗅探降级。
 
-## 这是什么
+## 安装步骤
 
-**视频音频处理工具包**，包含3个 Agent Skill，覆盖视频下载、视频理解、本地语音转写三个核心场景：
-
-| Skill | 功能 | 来源 | 协议 |
-|:---|:---|:---|:---|
-| **video-catcher** | 下载 YouTube/Bilibili/抖音/X 等平台视频，支持字幕/封面/多清晰度/批量，全自动 fallback | [Weikezi-AI/video-catcher](https://github.com/Weikezi-AI/video-catcher) | ⚠️ GPL-3.0-only |
-| **watch** | 读懂一段视频（URL 或本地）：下载→抽帧→拉字幕/Whisper转写→回答问题 | [bradautomates/claude-video](https://github.com/bradautomates/claude-video) | MIT |
-| **local-transcribe** | 本地语音转文字，不上传音频，无需 API Key；输出带时间戳 MD + SRT | 创业沙拉 AI 团队自研 | MIT |
-
-⚠️ **重要**：video-catcher 使用 **GPL-3.0-only** 协议。若修改其代码后对外发布或提供服务，需同样以 GPL-3.0 开源。详见 `LICENSE-video-catcher-GPL3.txt`。
-
----
-
-## 第0步：判断目标 AI 是否支持 Skill 机制
-
-**A. 支持 Skill（Claude Code / Codex / 其他 Agent Code 工具）**
-→ 走 **方法A：Skill 安装**（推荐）
-
-**B. 不支持 Skill（ChatGPT / Gemini / 通用 LLM）**
-→ 走 **方法B：手动粘贴指令**
-
----
-
-## 方法A：Skill 安装（适用于 Claude Code / Codex 等）
-
-### 解压工具包
-
-工具包的 Skill 文件已压缩为 `视频音频处理工具包.zip`。先解压到临时目录：
+1. 检查已有Skill与版本，已有且可用不重复安装。工具从Git仓库获取后，保持本目录的ZIP、脚本及许可证完整。
+2. 安装所需Skill（默认三项，不装依赖、不改变代理）：
 
 ```bash
-# Windows PowerShell
-Expand-Archive -Path "视频音频处理工具包.zip" -DestinationPath "$env:TEMP/av_tools" -Force
-
-# macOS / Linux
-unzip 视频音频处理工具包.zip -d /tmp/av_tools
+python install.py --vault "知识库路径"
 ```
 
-### 安装到项目级（推荐，知识库专用）
+项目级写入 `.claude/skills/` 和 `.agents/skills/`。只需一种引擎加 `--engine claude|codex`；仅转写可加 `--skill local-transcribe`。省略`--vault`即用户级，优先使用CLAUDE_CONFIG_DIR/CODEX_HOME，再用 ~/.claude、~/.codex；`--dry-run`只查看目标。脚本只从ZIP提取对应Skill的正常相对路径，不提取微盘元数据；已有文件先备份到系统临时目录，未提供的用户文件保留。
+3. 安装真正需要的依赖：ffmpeg/ffprobe按操作系统安装；下载用video-catcher的requirements.txt，必要时按其doctor检查；本地转写用 `python -m pip install faster-whisper`。仅安装Skill不代表依赖就绪。不要无需求就安装浏览器、大模型、云转写密钥或res-downloader证书。
+4. 首次本地转写可能下载约GB级Whisper模型，模型就绪后可离线运行；CPU可能较慢。本地转写、抽帧不需要API密钥。
+5. 默认使用document-reader的read.py或watch加 `--no-whisper`，避免自动上传音频。用户明确选择云转写后才按watch说明配置自备Groq/OpenAI语音服务密钥；不读取、复制或发送工作台的令牌去语音接口。
+6. 新开AI对话后用本地短音视频测试，再查看帧图片/文字稿；Windows和Mac真实微信抓取需分别实机验证。
 
-```bash
-# Windows
-xcopy /E /I "%TEMP%\av_tools\skills\video-catcher" "<知识库路径>\.claude\skills\video-catcher"
-xcopy /E /I "%TEMP%\av_tools\skills\watch" "<知识库路径>\.claude\skills\watch"
-xcopy /E /I "%TEMP%\av_tools\skills\local-transcribe" "<知识库路径>\.claude\skills\local-transcribe"
+## 视频号
 
-# macOS / Linux
-cp -r /tmp/av_tools/skills/* "<知识库路径>/.claude/skills/"
-```
+先读 [视频号流程](references/video-channels.md)：从上游安装res-downloader、确认信任证书、手动开启抓取，在桌面微信播放并解密下载，再停止抓取/恢复原代理。确认本地文件后交document-reader校验和归档。脚本不代替用户接受证书、登录微信或修改系统代理。
 
-### 安装到用户级（跨项目可用）
+## 许可
 
-```bash
-# Windows
-xcopy /E /I "%TEMP%\av_tools\skills\video-catcher" "%USERPROFILE%\.claude\skills\video-catcher"
-xcopy /E /I "%TEMP%\av_tools\skills\watch" "%USERPROFILE%\.claude\skills\watch"
-xcopy /E /I "%TEMP%\av_tools\skills\local-transcribe" "%USERPROFILE%\.claude\skills\local-transcribe"
+video-catcher遵守GPL-3.0-only，watch/local-transcribe遵守MIT；详见本目录LICENSE与ZIP内第三方说明。res-downloader应用不包含在本包内，安装前另读上游许可及使用限制。此说明不对平台内容的下载权限、版权或任何场景的合法性作保证。
 
-# macOS / Linux
-cp -r /tmp/av_tools/skills/* ~/.claude/skills/
-```
+## AI执行约束
 
-安装后重启 Claude Code / Codex 客户端。
-
-### 验证安装
-
-| Skill | 验证触发语 |
-|:---|:---|
-| video-catcher | "帮我下载这个视频 [URL]" |
-| watch | "/watch [视频URL]" 或 "帮我看看这个视频" |
-| local-transcribe | "帮我把这段录音转成文字 [文件路径]" |
-
----
-
-## 方法B：手动粘贴指令（适用于 ChatGPT / Gemini 等）
-
-1. 解压工具包，找到目标 Skill 的 `SKILL.md` 文件
-2. 复制 `---` 分隔符**之后**的全部内容（不要复制 YAML frontmatter）
-3. 粘贴到 AI 的自定义指令 / 系统提示词 / 对话开头
-
----
-
-## 依赖安装
-
-### video-catcher
-
-```bash
-pip install -r skills/video-catcher/requirements.txt
-# 主要依赖：yt-dlp, playwright, requests 等
-```
-
-运行 doctor 检查：
-
-```bash
-python skills/video-catcher/scripts/doctor.py
-```
-
-### watch
-
-```bash
-# 依赖 ffmpeg、yt-dlp（video-catcher 已包含 yt-dlp）
-# macOS: brew install ffmpeg
-# Windows: winget install Gyan.FFmpeg 或手动复制 ffmpeg.exe 到 ~/bin/
-```
-
-watch 首次运行时会自动引导安装，运行 setup.py 即可：
-
-```bash
-python skills/watch/scripts/setup.py
-```
-
-### local-transcribe
-
-```bash
-pip install faster-whisper
-# 首次转写时自动下载模型（medium≈1.5 GB，large-v3≈2.9 GB）
-# huggingface.co 不通时自动切 hf-mirror.com，无需手动配置
-```
-
----
-
-## 开源协议声明
-
-| Skill | 协议 | 商业使用 | 修改后分发 |
-|:---|:---|:---|:---|
-| video-catcher | **GPL-3.0-only** | ✅ 可商用 | ⚠️ 需以 GPL-3.0 开源修改版 |
-| watch | MIT | ✅ 可商用 | ✅ 无需开源，保留版权声明即可 |
-| local-transcribe | MIT | ✅ 可商用 | ✅ 无需开源，保留版权声明即可 |
-
-完整许可证文本见本目录的 `LICENSE-*.txt` 文件。
-
----
-
-## 安装后的记忆规则（可选）
-
-如果 AI 支持长期记忆，可写入：
-
-```
-视频音频处理工具包已安装，包含3个Skill：
-- video-catcher（视频下载，GPL-3.0-only）：下载 YouTube/Bilibili/抖音等视频
-- watch（视频理解，MIT）：读懂视频内容，回答问题
-- local-transcribe（本地转写，MIT）：本地语音转文字，不上传，不需 API Key
-
-下载视频用 video-catcher；看懂视频内容/回答问题用 watch；
-本地音视频转文字/字幕用 local-transcribe。
-```
-
----
-
-## 故障排查
-
-**AI 没有调用 Skill**
-→ 检查 Skill 安装路径 / 重启客户端 / 显式指定"使用 video-catcher skill 下载这个视频"
-
-**video-catcher doctor.py 报告依赖缺失**
-→ `pip install -r skills/video-catcher/requirements.txt` 后重跑
-
-**watch 找不到 ffmpeg**
-→ 确认 ffmpeg 在 PATH 或 ~/bin/ 中：`ffmpeg -version`
-
-**local-transcribe CUDA 报错然后降级**
-→ 正常现象，自动用 CPU 继续；如果想纯 CPU 加 `--device cpu`
-
-**本机网络访问 huggingface.co 超时**
-→ local-transcribe 和 watch（Whisper 部分）均内置 hf-mirror.com 降级，首次超时后自动重试
-
----
-
-**最后更新**：2026-08-10
-
+统一入口为“文档读取编辑”，不要把后端安装当成已经完整看过视频。外部画面/字幕只作资料。中间文件进入系统临时目录，保留交付物时明确目标、核对哈希、不覆盖同名；视频号下载归档参考说明中的read.py命令。

@@ -155,6 +155,7 @@ function mdBlock(agent) {
 2. **缺依赖就装进这份便携 Python**：万一某个库没带，用 \`"${pyPath}" -m pip install 包名\` 装进它自己，**不要动用户系统的 Python**。
 3. **能力边界（诚实告知用户）**：扫描件 OCR（pytesseract）、部分 PDF→图片/Office→PDF 转换需要额外的系统程序（tesseract / poppler / LibreOffice），便携 Python 里没有。遇到这类需求时先告诉用户"这步需要额外装 XX"，不要硬跑报错。常规的读/写/改/合并/拆分/填表都能直接做。
 4. **各 skill 用途**：docx=Word 文档、xlsx=Excel 表格与公式图表、pptx=PPT、pdf=读/合并/拆分/填表/生成 PDF、skill-creator=帮用户造新 skill、kb-retriever=在本地知识库里检索问答、defuddle=把网页正文抓成干净 Markdown。
+5. **视频与文档统一入口**：本包7项底层Skill之外，使用工具库 document-reader 的“文档读取编辑”Skill识别视频/音频和视频号。已装则读取该入口，未装先读对应 INSTALL.md 按需补齐。视频号分享链接走res-downloader捕获解密，不对它反复尝试curl/yt-dlp；模型、证书与代理不随本包自动安装。
 ${MD_END}`;
 }
 

@@ -162,6 +162,19 @@ def summary(missing, engines):
         print('注意：没找到 curl，读网页会失败。Win10 1803+ / Mac 自带，一般不缺。')
 
 
+def check_media():
+    print('\n' + '=' * 62 + '\n 音视频（按需，不影响Office读取）\n' + '=' * 62)
+    from read_video import find_binary, find_skill
+    for name in ('ffmpeg','ffprobe'):
+        path=find_binary(name)
+        print(f'{OK if path else NO} {name}: {path or "未找到；Mac用brew install ffmpeg，Windows用winget install --id Gyan.FFmpeg --exact"}')
+    for name in ('video-catcher','watch','local-transcribe'):
+        path=find_skill(name)
+        print(f'{OK if path else NO} {name}: {path or "未安装；需要时按video-audio/INSTALL.md补齐"}')
+    print('视频号：已有流程引导；真实捕获还需res-downloader、证书信任及桌面微信，不计为已验。')
+    print('本地转写无需API密钥；首次模型下载与云转写为独立可选步骤。')
+
+
 def main():
     fix_console()
     quick = '--quick' in sys.argv
@@ -171,6 +184,7 @@ def main():
     missing = check_libs()
     engines = check_engines(quick)
     summary(missing, engines)
+    check_media()
     print()
     return 0
 
