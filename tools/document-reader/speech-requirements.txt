@@ -1,0 +1,4 @@
+# Optional local speech runtime; install only when reading spoken content.
+# PyAV 19 removed metadata_errors used by faster-whisper 1.2.1.
+faster-whisper==1.2.1
+av==14.2.0

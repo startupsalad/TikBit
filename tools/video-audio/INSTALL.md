@@ -1,6 +1,6 @@
 # 视频音频处理工具包安装（0.2.0）
 
-本包为必装 [document-reader](../document-reader/INSTALL.md) 的按需后端：video-catcher负责一般网络视频下载，watch提供高级字幕/画面分析，local-transcribe提供本地转写。视频号独立走res-downloader流程，不把视频号分享链接送入通用yt-dlp或浏览器嗅探降级。
+本包为必装 [document-reader](../document-reader/INSTALL.md) 的按需后端：video-catcher负责一般网络视频下载，watch提供高级字幕/画面分析，local-transcribe提供本地转写。视频号优先交document-reader 0.4.0的自动解析模块，普通客户无需res-downloader；不把分享链接送入通用yt-dlp或普通网页嗅探。
 
 ## 安装步骤
 
@@ -19,7 +19,7 @@ python install.py --vault "知识库路径"
 
 ## 视频号
 
-先读 [视频号流程](references/video-channels.md)：从上游安装res-downloader、确认信任证书、手动开启抓取，在桌面微信播放并解密下载，再停止抓取/恢复原代理。确认本地文件后交document-reader校验和归档。脚本不代替用户接受证书、登录微信或修改系统代理。
+先用document-reader统一入口`read.py 分享链接`直接解析下载；读取口播加`--transcribe`。本包只承担本地转写等后端，默认不让客户开抓取工具、微信播放或装证书。若维护者明确选择桌面捕获，再读 [手动流程](references/video-channels.md)；默认自动路径与可替换解析服务边界以document-reader同名参考文档为准。
 
 ## 许可
 

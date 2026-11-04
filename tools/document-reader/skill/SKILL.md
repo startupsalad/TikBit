@@ -60,7 +60,7 @@ description: |
 | 网址 | `read_web.py <网址>` |
 | `mp.weixin.qq.com` 链接 | `fetch_mp_article.py <网址>` |
 | 本地 `.mp4/.mov/.mkv/.webm/.mp3/.wav/.m4a` 等 | `read_video.py <文件>`，校验并抽帧到系统临时目录 |
-| 视频号 `weixin.qq.com/sph/...` | 先读 `{{工具包路径}}/references/video-channels.md`，引导桌面微信捕获解密后再处理本地文件 |
+| 视频号 `weixin.qq.com/sph/...` | `read.py "链接"`直接解析下载并校验抽帧；读口播加`--transcribe`，下载保存加`--download-only --archive-dir`；全程留在工作台 |
 | 一般视频链接 | `read.py <链接>` 给出已有video-catcher/watch后端位置，再读该Skill下载；不是已下载成功 |
 | 普通网页中的视频 | 用户明确要求视频时使用 `read.py <链接> --video`；普通文章仍按网页处理 |
 | `.pdf` `.csv` `.txt` `.md` `.json` 常规图片 | **不用脚本**，Read 直接看 |
@@ -98,6 +98,18 @@ SPA 必须走第 3 层。实测 `startupsalad.com`（Vite+React）：curl 得 14
 
 ## 音视频读取与视频号归档
 
+### 视频号在工作台内直接读取（0.4.0）
+
+用户给`sph`链接，或说“读一下／总结这个视频”“下载这个视频号”，直接执行统一入口；不把客户引导到开始菜单、网页下载站、第三方应用或微信操作步骤。
+
+1. **只下载**：运行`read.py "链接" --download-only --full-check --archive-dir "视频号下载"`，完成后返回视频／笔记链接。项目有指定位置时优先，不让小白找目录、选代理或装证书。
+2. **读取／总结**：运行`read.py "链接" --transcribe --archive-dir "视频号下载"`，读取实际文字稿和每张关键帧再分析。仅下载、抽帧或全片解码都不等于已读完口播，不根据标题猜内容。
+3. 首次本地转写由AI按`video-audio/INSTALL.md`准备已有后端和必要运行依赖，先告知初始化可能较慢；复用缓存模型，不强制重复下载。依赖隔离到用户`.tikbit/media-runtime/site-packages`，按工具包`speech-requirements.txt`用`pip --only-binary=:all:`安装，避免不兼容PyAV或现场编译；`read_video.py`会在转写子进程加载。普通客户全程在对话里等待／取消，不需要自己跑命令、申请语音密钥或跳页。退出码4表示视频已保留但转写待准备，继续对输出的本地`source`处理，不重新下载。
+4. 自动路径使用可替换的第三方解析服务获取临时地址，文件从腾讯CDN下载；不读取微信账号，不装证书，不开关代理。维护者可设置`TIKBIT_CHANNELS_RESOLVER_URL`或`--resolver`；不要把CDN签名参数写进笔记或回显到聊天。解析服务不是微信官方，不承诺所有链接／长期可用。
+5. 服务限流、失败或视频不可访问时，在本对话说明原因并保留已成功文件；不悄悄改成要求客户开抓取软件的流程，不密集重试。桌面抓取仅维护者明确选择`--capture-guide`／`--begin`时启用，细则另读参考说明。
+
+本地视频、音频及一般视频链接继续使用下面已有入口。把链接直接送普通网页／yt-dlp不是视频号自动解析方案。
+
 运行入口：
 
 ```bash
@@ -111,7 +123,7 @@ python "{{工具包路径}}/read.py" "视频.mp4" --transcribe
 - JSON列出的帧图片须逐张查看。默认8张稀疏帧、开头最多5秒试解码，不代表已完整观看/全片无损；`--full-check`才全片解码。
 - 默认只在系统临时目录准备素材。显式归档才复制视频和创建同名MD，核对哈希、重名加序号、原文件保留。作者、日期、标题不猜。
 - `--transcribe`调用已安装local-transcribe；首次下载模型与CPU耗时先说明。缺Skill时读取工具库video-audio/INSTALL.md，按当前引擎安装。`CODEX_HOME`/`CLAUDE_CONFIG_DIR`优先，不猜固定官方用户目录。
-- 视频号分享链接不走普通网页或反复curl/yt-dlp。按参考说明抓取解密，证书/微信播放由用户处理；结束核对恢复原代理，未核对就写待核对。
+- 视频号默认走专用解析模块，不走普通网页或反复curl/yt-dlp，不要求客户微信播放／证书代理。只有维护者明确选择桌面捕获时才按参考说明操作，并核对原代理恢复；不能把该分支变成普通客户前置。
 - video-catcher/watch只承担已有后端能力；需要云端语音API时须用户明确选择并自备密钥，不能假设工作台令牌兼容。
 
 ## 二、怎么改存量 Office 文件（officecli）

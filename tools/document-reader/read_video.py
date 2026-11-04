@@ -107,6 +107,7 @@ def url_guidance(source):
     kind = url_kind(source)
     if kind == 'channels':
         return {'status':'manual_capture_required', 'kind':kind,
+                'session_tool':str(HERE/'read_channels.py'),
                 'guide':str(HERE/'references/video-channels.md'),
                 'steps':['使用res-downloader，首次按上游说明安装对应平台版本与证书；自动开启代理保持关闭。',
                          '记录原代理和实际下载目录，再开启抓取/启动代理。',
@@ -171,10 +172,24 @@ def inspect_local(source, frames=8, full=False, extract_audio=False, transcribe=
         script = Path(transcribe_skill).parent/'scripts/transcribe.py'
         if not script.is_file():
             raise RuntimeError('local-transcribe脚本不完整，请修复该工具安装')
-        print('本地转写已显式启用；首次可能下载约GB级模型，CPU转写可能较慢。',file=sys.stderr)
         env = dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONDONTWRITEBYTECODE='1')
+        # Keep optional speech dependencies isolated from the document runtime.
+        packages = Path.home()/'.tikbit/media-runtime/site-packages'
+        if packages.is_dir():
+            env['PYTHONPATH'] = str(packages)+(os.pathsep+env['PYTHONPATH'] if env.get('PYTHONPATH') else '')
+        model = os.environ.get('TIKBIT_TRANSCRIBE_MODEL')
+        if not model:
+            cached = Path.home()/'.cache/huggingface/hub/models--Systran--faster-whisper-medium'
+            reference = cached/'refs/main'
+            if reference.is_file():
+                candidate = cached/'snapshots'/reference.read_text(encoding='utf-8').strip()
+                if (candidate/'model.bin').is_file():
+                    model = str(candidate)
+        options = ['--model', model] if model else []
+        print('正在使用本地缓存模型转写；CPU处理可能较慢。' if model and Path(model).is_dir()
+              else '正在本地转写；首次可能准备约GB级模型，CPU处理可能较慢。',file=sys.stderr)
         # No cloud fallback or key access. Transcription can take a long time.
-        subprocess.run([sys.executable,str(script),str(source),'--output-dir',str(output)],check=True,stdout=sys.stderr,env=env)
+        subprocess.run([sys.executable,str(script),str(source),'--output-dir',str(output)]+options,check=True,stdout=sys.stderr,env=env)
         notes = list(output.glob('*.md'))
         if not notes:
             raise RuntimeError('转写进程结束但没有文字稿，不能当作成功')

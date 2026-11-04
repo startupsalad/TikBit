@@ -209,4 +209,6 @@ python install.py --vault "知识库路径"
 
 视频处理先检查ffmpeg与ffprobe；可用Homebrew/winget或已有便携程序，通过FFMPEG_PATH/FFPROBE_PATH指定。仅在用户需要本地转写时安装video-audio中的local-transcribe。视频号细节读 `references/video-channels.md`；安装器成功不等于证书已信任，静态自检不等于真实微信抓取已验收。
 
+0.4.0视频号链接由`read.py`派给`read_channels.py`，默认`channels_resolver.py`自动解析并从腾讯CDN下载，不要求客户开微信／抓取软件、装证书或调代理。只下载用`--download-only --full-check --archive-dir`；读取口播加`--transcribe`，AI准备按需后端与运行依赖并先说明初始化耗时，复用模型缓存，不让客户跑命令或填语音密钥。解析器可替换，失败在对话内报告；旧0.3.0手动会话须维护者明确选择才执行。保留所有脚本，签名CDN参数不落笔记；不生成客户开始菜单入口。
+
 已有docx/xlsx/pptx/pdf后端说明保持原样。脚本安装后新开对话以重新发现扩展后的description；旧会话可显式读取更新后的Skill。

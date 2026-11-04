@@ -234,7 +234,7 @@ python fetch_mp_article.py "https://mp.weixin.qq.com/s/xxx"
 - 更早:`read_ppt.py` / `read_excel.py` / `read_doc.py` / `read_web.py` 陆续成型
 
 
-## 视频、音频与视频号（0.2.0）
+## 视频、音频与视频号（0.4.0）
 
 本地MP4/MOV/MKV/WebM、MP3/WAV/M4A等已接入统一入口：
 
@@ -249,6 +249,12 @@ python read.py "https://example.com/video-page" --video
 
 本地处理用ffprobe核验、ffmpeg解码和抽帧；JSON报告列出带时间戳的帧图片，AI要再查看图片。默认最多检查开头5秒、采样8帧，不能当成全片完整性或完整内容分析。中间素材在系统临时目录，显式归档才复制视频并生成同名MD；哈希核对、重名不覆盖、原件保留。
 
-视频链接模式只返回处理流程和可用后端位置，不直接下载。视频号走 [捕获、解密与归档说明](references/video-channels.md)，安装证书、在微信播放及恢复原代理需要用户参与；公众号文章继续走原文章读取。一般视频复用工具库video-audio，不要求所有人安装模型；本地转写无需密钥，首次模型下载需要网络，云转写是用户另选的分支。
+视频号默认直接解析下载：`read.py URL`下载并校验抽帧；只保存用`--download-only --full-check --archive-dir 视频号下载`，读取口播用`--transcribe`。普通客户只需在工作台发链接或说“读一下／下载”，不用开第三方软件、微信播放、安装证书或操作代理。AI读取真实文字稿与关键帧后给结论，下载不等于完整阅读。
 
-新增文件：`media_routes.py`（来源识别）、`read_video.py`（本地读取及链接引导）、`media_archive.py`（不覆盖归档）、`install.py`（双引擎Skill安装）、`references/video-channels.md`（视频号流程）。`python 检查环境.py --quick` 也会报告音视频依赖状态。
+`channels_resolver.py`调用可替换的第三方解析器取得腾讯CDN地址；只下载允许的HTTPS视频域名，检查大小／时限／长度，不保存签名地址。当前默认服务无密钥，但不代表商业SLA或长期可用；维护者可用`TIKBIT_CHANNELS_RESOLVER_URL`替换。失败在对话内报告，不悄悄改成要求客户手动抓取。详细边界见 [视频号说明](references/video-channels.md)。
+
+原件保留、同名不覆盖。首次转写由AI准备必要后端及依赖，先说明初始化耗时并复用缓存模型；不要求客户自行配置云语音密钥。显式`--capture-guide`／`--begin`才走维护者手动会话，原0.3.0目录快照、候选确认、代理比对及重复收尾保护继续保留，退出码3仅在该分支表示代理待核对。
+
+公众号文章继续走原文章读取，一般视频链接给出已有video-audio后端位置；本地转写无需密钥，首次模型下载需要网络，云转写由用户另选。
+
+媒体文件：`media_routes.py`（来源识别）、`read_video.py`（本地读取及一般链接引导）、`read_channels.py`（视频号统一执行）、`channels_resolver.py`（自动解析下载）、`channels_proxy.py`（维护分支只读代理比对）、`media_archive.py`（不覆盖归档）、`install.py`（双引擎Skill安装）、`references/video-channels.md`（视频号流程）。`python 检查环境.py --quick` 也会报告音视频依赖状态。

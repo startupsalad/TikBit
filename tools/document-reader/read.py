@@ -90,7 +90,9 @@ def pick_for_url(url):
     kind = url_kind(url)
     if kind == 'article':
         return 'fetch_mp_article.py'
-    return 'read_video.py' if kind in ('channels', 'video') else 'read_web.py'
+    if kind == 'channels':
+        return 'read_channels.py'
+    return 'read_video.py' if kind == 'video' else 'read_web.py'
 
 
 def run(script, rest):
@@ -114,7 +116,9 @@ def main():
         force_video = '--video' in rest
         if force_video:
             rest = [arg for arg in rest if arg != '--video']
-        script = 'read_video.py' if force_video else pick_for_url(target)
+        script = pick_for_url(target)
+        if force_video and script != 'read_channels.py':
+            script = 'read_video.py'
         print(f'[分派] {script}', file=sys.stderr)
         return run(script, [target] + rest)
 

@@ -22,7 +22,7 @@ https://github.com/startupsalad/TikBit
 |:---|:---|
 | `must-skills` | docx、xlsx、pptx、pdf、知识库检索、Skill 创建和网页正文读取等底层能力 |
 | `html-page` | H5、推文页和落地页生成 |
-| `document-reader` | 文档、网页及音视频统一入口；视频号抓取引导、本地校验抽帧与不覆盖归档（0.2.0） |
+| `document-reader` | 文档、网页及音视频统一入口；视频号分享链接自动下载、校验读取与归档（0.4.0） |
 | `gpt-image` | 工作台对话生图、参考图编辑及本地修复；默认 2.5 精细档（1.2.0） |
 
 ### 推荐

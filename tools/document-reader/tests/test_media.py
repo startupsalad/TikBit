@@ -21,7 +21,7 @@ class RoutingTests(unittest.TestCase):
 
     def test_channels_host_path_and_uppercase(self):
         for url in ('https://weixin.qq.com/sph/abc', 'https://WEIXIN.QQ.COM/sph/abc?x=1'):
-            self.assertEqual(router.pick_for_url(url), 'read_video.py')
+            self.assertEqual(router.pick_for_url(url), 'read_channels.py')
 
     def test_article_and_web_regression(self):
         self.assertEqual(router.pick_for_url('https://mp.weixin.qq.com/s/a'), 'fetch_mp_article.py')
@@ -36,9 +36,9 @@ class RoutingTests(unittest.TestCase):
             self.assertEqual(router.pick_for_url(url), 'read_video.py')
         self.assertEqual(router.pick_for_url('https://www.youtube.com/about'), 'read_web.py')
 
-    def test_channels_cli_never_networks(self):
+    def test_channels_explicit_capture_guidance_never_networks(self):
         result = subprocess.run([sys.executable, '-B', str(HERE/'read.py'),
-                                 'https://weixin.qq.com/sph/example'], capture_output=True, text=True, encoding='utf-8')
+                                 'https://weixin.qq.com/sph/example', '--capture-guide'], capture_output=True, text=True, encoding='utf-8')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('res-downloader', result.stdout)
         self.assertIn('video-channels.md', result.stdout)
@@ -93,6 +93,18 @@ class ArchiveTests(unittest.TestCase):
                 self.archive.archive_media(self.source,self.root/'out','title','',self.meta,'quick')
         self.assertTrue(self.source.exists())
         self.assertFalse(list((self.root/'out').glob('*.md')))
+
+    def test_transcripts_are_attached_with_collision_protection(self):
+        result=self.archive.archive_media(self.source,self.root/'out','title','',self.meta,'quick')
+        transcript=self.root/'speech.md'; transcript.write_text('引擎: local · 模型: C:/private/model\nspoken words',encoding='utf-8')
+        transcript.with_suffix('.srt').write_text('subtitles',encoding='utf-8')
+        (self.root/'out/title 文字稿.md').write_text('KEEP',encoding='utf-8')
+        saved=self.archive.archive_transcripts(result,[str(transcript)])
+        self.assertEqual(len(saved),2)
+        self.assertIn('(2)',saved[0])
+        self.assertEqual((self.root/'out/title 文字稿.md').read_text(encoding='utf-8'),'KEEP')
+        self.assertIn('文字稿 (2).md',Path(result['note']).read_text(encoding='utf-8'))
+        self.assertNotIn('C:/private',Path(saved[0]).read_text(encoding='utf-8'))
 
 class LocalMediaTests(unittest.TestCase):
     def test_missing_binary_and_invalid_count(self):

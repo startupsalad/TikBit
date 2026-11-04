@@ -23,7 +23,7 @@ def digest(path):
     return result.hexdigest()
 
 
-def archive_media(source, destination, title, source_url, metadata, check_level):
+def archive_media(source, destination, title, source_url, metadata, check_level, proxy_check=None):
     source, destination = Path(source).resolve(), Path(destination).resolve()
     if not source.is_file() or source.stat().st_size == 0:
         raise ValueError('源文件不存在或为空')
@@ -63,7 +63,14 @@ def archive_media(source, destination, title, source_url, metadata, check_level)
                 text += f'- 分辨率：{video.get("width",0)} × {video.get("height",0)}\n'
             coverage = '全片解码通过' if check_level == 'full' else '开头最多5秒试解码通过；不代表全片无损'
             text += f'- 文件核验：{coverage}；归档副本SHA-256一致。\n'
-            text += '- 代理恢复：待核对；归档脚本不读取或修改系统代理。\n'
+            if proxy_check and proxy_check.get('status') == 'not_used':
+                text += '- 抓取代理：本次直接解析下载，工具未启用或修改系统代理。\n'
+            elif proxy_check and proxy_check.get('status') == 'restored':
+                text += f'- 代理恢复：归档时与抓取前配置一致（{proxy_check["scope"]}）；不代表所有VPN或网络连通性已验证。\n'
+            elif proxy_check and proxy_check.get('status') == 'changed':
+                text += '- 代理恢复：归档时与抓取前配置不同，待恢复并复查；工具未修改系统代理。\n'
+            else:
+                text += '- 代理恢复：待核对；归档脚本不读取或修改系统代理。\n'
             text += '- 原下载文件保留；摘要、作者及发布日期未自动推断。\n'
             with note.open('x', encoding='utf-8', newline='\n') as stream:
                 stream.write(text)
@@ -72,3 +79,44 @@ def archive_media(source, destination, title, source_url, metadata, check_level)
             # Never delete synchronized files; leave partial output for inspection.
             raise ValueError(f'归档未完成，源文件保留；检查候选文件 {target}：{error}') from error
     raise ValueError('同名文件过多，请换标题或目录')
+
+
+def archive_transcripts(archive, transcripts):
+    """Attach finished local transcripts without replacing existing notes/subtitles."""
+    media = Path(archive['media'])
+    note = Path(archive['note'])
+    saved = []
+    for original in transcripts:
+        source = Path(original)
+        if not source.is_file() or source.suffix.lower() != '.md':
+            raise ValueError('文字稿不存在或不是Markdown')
+        text = source.read_text(encoding='utf-8-sig')
+        text = '\n'.join('本地语音自动转写，可能存在听写错误。' if line.startswith('引擎:') else line
+                         for line in text.splitlines())+'\n'
+        payload = text.encode('utf-8')
+        for index in range(1, 10001):
+            stem = media.stem+' 文字稿'+('' if index == 1 else f' ({index})')
+            target = media.parent/(stem+'.md')
+            subtitle = media.parent/(stem+'.srt')
+            if target.exists() or subtitle.exists():
+                continue
+            with target.open('xb') as output:
+                output.write(payload)
+            if digest(target) != hashlib.sha256(payload).hexdigest():
+                raise ValueError('文字稿副本校验未通过；保留文件待核查')
+            saved.append(str(target))
+            incoming_subtitle = source.with_suffix('.srt')
+            if incoming_subtitle.is_file():
+                with subtitle.open('xb') as output, incoming_subtitle.open('rb') as incoming:
+                    shutil.copyfileobj(incoming, output)
+                saved.append(str(subtitle))
+            break
+        else:
+            raise ValueError('同名文字稿过多，请核查目录')
+    if saved:
+        with note.open('a', encoding='utf-8', newline='\n') as output:
+            output.write('\n## 口播文字稿\n\n')
+            for path in saved:
+                output.write(f'- [[{Path(path).name}]]\n')
+            output.write('\n文字由本地语音识别生成，可能存在听写错误；内容观点不等于事实核实。\n')
+    return saved
