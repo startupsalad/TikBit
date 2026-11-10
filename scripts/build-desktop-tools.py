@@ -52,7 +52,7 @@ def archive_payload(archive_path, recipe):
             data = archive.read(item)
             if name.lower().endswith(('.md', '.txt')):
                 text = data.decode('utf-8-sig', errors='strict')
-                text = text.replace('C:\\Users\\Administrator', '<USER_HOME>').replace('C:/Users/Administrator', '<USER_HOME>')
+                text = re.sub(r'c:[\\/]users[\\/]administrator(?=[\\/]|$)', '<USER_HOME>', text, flags=re.I)
                 data = text.encode('utf-8')
             if name.startswith('skills/'):
                 payload[name] = data

@@ -17,6 +17,17 @@ SPEC.loader.exec_module(BUILDER)
 
 
 class DesktopDistributionTests(unittest.TestCase):
+    def test_external_markdown_redacts_user_paths_case_insensitively(self):
+        with tempfile.TemporaryDirectory(prefix='desktop-privacy-', dir=os.environ.get('TEMP')) as temporary:
+            archive = Path(temporary) / 'source.zip'
+            with zipfile.ZipFile(archive, 'w') as source:
+                source.writestr('skills/example/SKILL.md', '---\nname: example\n---\n# Example')
+                source.writestr('skills/example/reference.md', 'c:/Users/Administrator/tools\nC:\\Users\\Administrator\\tools')
+            payload, _ = BUILDER.archive_payload(archive, {})
+            text = payload['skills/example/reference.md'].decode('utf-8')
+            self.assertNotIn('administrator', text.lower())
+            self.assertEqual(text.count('<USER_HOME>'), 2)
+
     def test_reproducible_complete_packages_and_immutable_versions(self):
         with tempfile.TemporaryDirectory(prefix='desktop-tools-build-', dir=os.environ.get('TEMP')) as temporary:
             output = Path(temporary)
