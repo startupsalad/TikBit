@@ -11,6 +11,7 @@ node_modules/
 .venv/
 dist/
 build/
+desktop/packages/ppt-design-*.zip
 .WeDrive
 .DS_Store
 Thumbs.db

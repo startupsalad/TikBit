@@ -51,6 +51,14 @@ https://github.com/startupsalad/TikBit
 
 ## 快速安装工具库
 
+### 工作台内一键安装
+
+已接入此功能的 TikBit 客户端可在“设置 → 更多工具”查看目录，选择安装、更新或修复，安装后点击“立即使用”打开新对话。工具安装到当前知识库，Claude 和 GPT 均可使用；已有自定义文件会保留。
+
+分发清单及独立包见 [desktop/README.md](desktop/README.md)。全部 18 个工具包支持安装；需要服务器、账号登录或画像的工具，安装后通过“继续配置”完成必要步骤。语音朗读包仅支持 Claude；PPT 核心资源按需下载。未接入该入口的旧客户端继续使用下面的 AI 安装方式。
+
+### 通过 AI 安装
+
 Windows PowerShell：
 
 ```powershell

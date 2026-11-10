@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "tools": [
+    {"id":"writing-humanizer","skills":[{"source":"SKILL.md","name":"writing-humanizer-zh"}],"resources":[]},
+    {"id":"html-page","skills":[{"source":".claude/skills/html-page","name":"html-page"}],"resources":["design-systems","README.md"]},
+    {"id":"web-design","skills":[{"source":"skills/web-design-engineer","name":"web-design-engineer"},{"source":"skills/frontend-design","name":"frontend-design"}],"resources":["设计大脑","README.md"]},
+    {"id":"ai-marketing","skillDirectory":"skills","resources":[]},
+    {"id":"must-skills","skillDirectory":"skills","resources":[],"setup":"python"},
+    {"id":"document-reader","skills":[{"source":"skill","name":"document-reader"}],"resources":["."],"setup":"python"},
+    {"id":"gpt-image","skills":[{"source":"SKILL.md","name":"gpt-image"}],"resources":["gpt-image.js","image-config.cjs","VERSION"],"setup":"account"},
+    {"id":"voice-notification","wrapper":"task-voice-notification","resources":["engine","voice_clips","VERSION"],"integration":"notification"},
+    {"id":"ai-social-media","skillDirectory":"skills","resources":[]},
+    {"id":"ai-media-team","skills":[{"source":"package/📦临时skill文件夹/策划总监","name":"marketing-director"},{"source":"package/📦临时skill文件夹/内容总监","name":"content-director"},{"source":"package/📦临时skill文件夹/制作总监","name":"creative-director"}],"resources":[],"seeds":{"source":"package","target":"新媒体AI员工","exclude":["📦临时skill文件夹"]},"setup":"profile"},
+    {"id":"ai-self-growth","wrapper":"ai-self-growth","resources":["core/成长大脑","core/记忆模板"],"integration":"growth"},
+    {"id":"ai-customer-service","skills":[{"source":"skills/在线客服机器人","name":"ai-customer-service"}],"resources":["参考实现","INSTALL.md","📖 使用说明.md"],"setup":"server"},
+    {"id":"wechat-ai-deployment","wrapper":"wechat-ai-deployment","resources":["personal","enterprise","INSTALL.md"],"setup":"server"},
+    {"id":"ppt-style-gallery","wrapper":"ppt-style-gallery","resources":["assets","templates","README.md"]},
+    {"id":"video-audio","archive":"视频音频处理工具包.zip","archiveSkills":"skills","resources":[],"setup":"media"},
+    {"id":"video-channels-comment","wrapper":"video-channels-comment","resources":["core/视频号评论导出工具.py"],"setup":"browser-login"},
+    {"id":"ai-voice-pack","wrapper":"ai-voice-pack","resources":["speak.js"],"integration":"read-aloud","providers":["claude"]},
+    {"id":"ppt-design","externalArchive":"ppt-core","archiveSkills":"skills","resources":[],"setup":"python"}
+  ]
+}
