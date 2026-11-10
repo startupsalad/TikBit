@@ -294,8 +294,8 @@
       "install": {
         "version": "0.1.0",
         "url": "https://github.com/startupsalad/TikBit/releases/download/desktop-ppt-design-0.1.0/ppt-design-0.1.0.zip",
-        "bytes": 151437032,
-        "sha256": "7144bce1d57c2d37360fdc3becd51ed3ac00cb79ca1a8104045a26dc1daa4add",
+        "bytes": 151437035,
+        "sha256": "8e50342fccad20fd4258eacc7797fcfd8de8fe56080c5926b8e57d70f9498ca2",
         "skills": [
           "allaction-ppt-design",
           "guizang-ppt",
