@@ -9,7 +9,7 @@
 
 ---
 
-## 0.3.1 安装与升级边界
+## 0.3.2 安装与升级边界
 
 这是可选工具，不是插件默认功能。升级已安装用户请优先执行 `python update.py --check`，确认后执行 `python update.py`，必要时显式指定 `--target`；不要重跑整套安装覆盖用户选择、私有引擎或自定义钩子。私有改版请备份后人工合并。脚本更新与 AI 记忆规则须同时处理；插件 OTA 不会替换这套引擎。
 
@@ -26,11 +26,11 @@ import os
 # 获取当前工作目录（应该是知识库根目录）
 cwd = Path.cwd()
 
-# 检测 TikBit 插件特征
-tikbit_sessions = cwd / ".claudian" / "sessions"
-tikbit_data = cwd / ".obsidian" / "plugins" / "tikbit-claudian" / "data.json"
+# 检测当前配置目录，不要求新旧数据目录同时存在
+config_dir = os.environ.get("TIKBIT_OBSIDIAN_CONFIG_DIR", ".obsidian")
+tikbit_data = cwd / config_dir / "plugins" / "tikbit-claudian" / "data.json"
 
-is_tikbit = tikbit_sessions.exists() and tikbit_data.exists()
+is_tikbit = tikbit_data.is_file()
 
 if is_tikbit:
     print("✅ 检测到 Obsidian TikBit 插件环境")
@@ -81,6 +81,8 @@ cp -r voice_clips/* ~/.claude/voice_clips/
 ### C. 可选的多标签集成
 
 多标签集成需要用户自行设置 `TIKBIT_VAULT_ROOT` 环境变量，指向自己的知识库路径（见第 3 步）。本公开版不携带任何特定用户的知识库路径。
+
+若Obsidian不是默认`.obsidian`配置目录，安装AI应从宿主实际配置取得目录名，并同步设置`TIKBIT_OBSIDIAN_CONFIG_DIR`；它只接受知识库内单层目录名。由设置入口安装或调用时，显式向实际语音子进程传入两个环境变量，不依赖终端启动文件。自定义会话目录从选定插件`data.json`的`dataFolder`读取，无需修改脚本。新布局与旧备份不混读。
 
 播报时按 `voice_clips/claudian_multitab/dialog<N>_<话术>.mp3` 取音频，六种话术 `done / perm / stuck / wait / ask / error` 都带编号。找不到音频也不会退成"没编号"——脚本会用 SAPI 直接念出"对话N，……"，编号信息一定保留。
 
@@ -363,8 +365,8 @@ PowerShell `.ps1` 被 Git Bash 以 GBK 解析时中文会乱码。所以脚本�
 读 TikBit 插件自己的数据文件，**顺序是从标签列表出发**（不是扫 sessions 目录，那样在多对话下会拿错）：
 
 1. 优先使用 `CODEX_THREAD_ID`，否则使用 `CLAUDE_CODE_SESSION_ID`，避免继承的旧Claude变量串号
-2. 读 `.obsidian/plugins/tikbit-claudian/data.json` 的 `tabManagerState.openTabs` 数组，数组顺序 = 界面上标签顺序
-3. 按顺序遍历，用每个元素的 `conversationId` 去读 `.claudian/sessions/<id>.meta.json`
+2. 按`TIKBIT_OBSIDIAN_CONFIG_DIR`（默认`.obsidian`）读取`plugins/tikbit-claudian/data.json`的`tabManagerState.openTabs`，数组顺序 = 界面上标签顺序
+3. 先选定显式`dataFolder`、当前`<配置目录>/tikbit`或老插件`.claudian`数据目录，再用每个元素的`conversationId`读取该目录的`sessions/<id>.meta.json`；不逐文件回退旧备份
 4. 该 meta 的 `sessionId`、`providerState.providerSessionId` 或 `providerState.threadId` 唯一命中当前会话/thread → 返回界面编号（第1个元素=对话1）
 5. 未命中或重复命中 → 静音。绝不按更新时间猜新标签，也不从历史登记表分配编号
 6. 播 `voice_clips/claudian_multitab/dialog<N>_<话术>.mp3`；音频缺失就用 SAPI 念"对话N，……"，编号绝不丢

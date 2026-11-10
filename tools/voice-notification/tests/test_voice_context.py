@@ -62,7 +62,7 @@ function Speak-Sapi([string]$b64) {
             path.chmod(0o755)
         self.audio = self.base / "audio.log"
         self.env = os.environ.copy()
-        for name in ("CODEX_THREAD_ID", "CODEX_SESSION_ID", "CLAUDE_CODE_SESSION_ID", "TIKBIT_VAULT_ROOT", "TIKBIT_VOICE_SUPPRESS", "CODEX_HOME"):
+        for name in ("CODEX_THREAD_ID", "CODEX_SESSION_ID", "CLAUDE_CODE_SESSION_ID", "TIKBIT_VAULT_ROOT", "TIKBIT_VOICE_SUPPRESS", "TIKBIT_OBSIDIAN_CONFIG_DIR", "CODEX_HOME"):
             self.env.pop(name, None)
         self.env.update({"HOME": str(self.home), "USERPROFILE": str(self.home), "CODEX_HOME": str(self.home / ".codex"), "VOICE_TEST_AUDIO_LOG": str(self.audio), "PYTHONUTF8": "1"})
         self.env["PATH"] = str(self.bin) + os.pathsep + self.env["PATH"]
@@ -156,6 +156,133 @@ function Speak-Sapi([string]$b64) {
     def test_visible_main9(self):
         self.multitab()
         self.assert_context(True, 9, "exact-visible-tab")
+
+    def layout(self, config=".obsidian", custom=None):
+        old_sessions = self.sessions
+        if config != ".obsidian":
+            self.env["TIKBIT_OBSIDIAN_CONFIG_DIR"] = config
+            self.data = self.vault / config / "plugins/tikbit-claudian/data.json"
+            self.data.parent.mkdir(parents=True, exist_ok=True)
+        self.sessions = self.vault / (custom or (config + "/tikbit")) / "sessions"
+        shutil.copytree(old_sessions, self.sessions)
+        self.write_data()
+        if custom:
+            data = json.loads(self.data.read_text(encoding="utf-8-sig"))
+            data["dataFolder"] = custom
+            self.data.write_text(json.dumps(data), encoding="utf-8")
+
+    def test_migrated_layout_both_identities(self):
+        self.layout()
+        (self.vault / ".claudian/sessions/conv-9.meta.json").unlink()
+        (self.vault / ".claudian/sessions/conv-2.meta.json").unlink()
+        self.multitab()
+        self.assert_context(True, 9)
+        self.env.pop("CODEX_THREAD_ID")
+        self.env["CLAUDE_CODE_SESSION_ID"] = "main-2"
+        self.assert_context(True, 2)
+
+    def test_migrated_never_reads_old_backup(self):
+        self.layout()
+        self.multitab()
+        self.meta(9, {"sessionId": "new-main"})
+        self.assert_context(False, 0)
+        (self.sessions / "conv-9.meta.json").unlink()
+        self.assert_context(False, 0)
+
+    def test_migrated_duplicate_still_denied(self):
+        self.layout()
+        self.multitab()
+        self.meta(2, {"sessionId": MAIN})
+        self.assert_context(False, 0)
+
+    def test_migrated_unknown_worker_still_denied(self):
+        self.layout()
+        self.multitab(CHILD)
+        self.assert_context(False, 0)
+
+    def test_custom_config_and_data_folder(self):
+        self.layout(".obsidian-other", ".private-data")
+        self.multitab()
+        self.assert_context(True, 9)
+        self.meta(9, {"sessionId": "different-custom-main"})
+        self.assert_context(False, 0)
+
+    def test_custom_config_default_data(self):
+        self.layout(".obsidian-other")
+        self.multitab()
+        self.assert_context(True, 9)
+
+    def test_explicit_default_data_folder_uses_migration(self):
+        self.layout()
+        data = json.loads(self.data.read_text(encoding="utf-8-sig"))
+        data["dataFolder"] = ".claudian"
+        self.data.write_text(json.dumps(data), encoding="utf-8")
+        self.multitab()
+        self.meta(9, {"sessionId": "new-main"})
+        self.assert_context(False, 0)
+
+    def test_new_plugin_missing_data_does_not_use_legacy(self):
+        (self.data.parent / "manifest.json").write_text(json.dumps({"version": "2.1.4-tikbit-beta.78"}), encoding="utf-8")
+        self.multitab()
+        self.assert_context(False, 0)
+
+    def test_invalid_config_override_is_not_defaulted(self):
+        self.multitab()
+        self.env["TIKBIT_OBSIDIAN_CONFIG_DIR"] = "../outside"
+        self.assert_context(False, 0)
+
+    def test_legacy_stable68_and_beta76(self):
+        self.multitab()
+        for version in ("2.1.4-tikbit-stable.68", "2.1.4-tikbit-beta.76"):
+            (self.data.parent / "manifest.json").write_text(json.dumps({"version": version}), encoding="utf-8")
+            self.assert_context(True, 9)
+
+    def test_invalid_custom_data_folder_is_denied(self):
+        self.multitab()
+        for custom in ("../elsewhere", ".obsidian", 123):
+            data = json.loads(self.data.read_text(encoding="utf-8-sig"))
+            data["dataFolder"] = custom
+            self.data.write_text(json.dumps(data), encoding="utf-8")
+            self.assert_context(False, 0)
+
+    @unittest.skipUnless(PS, "PowerShell required for Windows gate")
+    def test_gate_uses_same_active_store_and_unique_identity(self):
+        self.layout()
+        self.multitab()
+        gate = str(self.engine / "notify-gate.ps1")
+        # Load only AST-extracted resolver: no watcher, marker, log or playback.
+        command = r'''
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($env:VOICE_TEST_GATE, [ref]$null, [ref]$null)
+$fn = $ast.Find({param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-TabIndex'}, $true)
+. ([ScriptBlock]::Create($fn.Extent.Text))
+Get-TabIndex $env:CODEX_THREAD_ID
+'''
+        self.env["VOICE_TEST_GATE"] = gate
+        for expected in (9, 0):
+            result = subprocess.run([PS, "-NoProfile", "-Command", command], env=self.env, capture_output=True, text=True, timeout=20)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(int(result.stdout.strip()), expected)
+            self.meta(2, {"sessionId": MAIN})
+
+    @unittest.skipUnless(PS, "PowerShell required for Windows gate")
+    def test_gate_watch_propagates_hook_identity_and_mutes_unknown(self):
+        self.layout()
+        self.env["TIKBIT_VAULT_ROOT"] = str(self.vault)
+        # Replace the downstream voice script with a probe; never play audio.
+        (self.engine / "notify-voice.ps1").write_text(
+            'param($Mode,$B64)\n[IO.File]::WriteAllText($env:VOICE_TEST_AUDIO_LOG, ($env:CLAUDE_CODE_SESSION_ID + ":" + $B64))\n',
+            encoding="utf-8-sig")
+        folder = self.engine / ".voice_gate"
+        folder.mkdir(parents=True)
+        for sid, expected in (("main-2", "main-2:2"), ("not-a-visible-session", "")):
+            (folder / (sid + ".pending")).write_text("test-ticket")
+            if self.audio.exists():
+                self.audio.unlink()
+            result = subprocess.run([PS, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(self.engine / "notify-gate.ps1"),
+                                     "-Mode", "watch", "-Key", sid, "-Ticket", "test-ticket", "-Delay", "0", "-Grace", "0"],
+                                    env=self.env, capture_output=True, text=True, timeout=20)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(self.audio.read_text() if self.audio.exists() else "", expected)
 
     def test_stale_claude_id_does_not_override_codex(self):
         self.multitab()

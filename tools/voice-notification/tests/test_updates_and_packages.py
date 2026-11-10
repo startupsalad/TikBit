@@ -57,6 +57,58 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual((self.target / "choice.txt").read_text(), "yunxi")
         self.assertEqual(updater.update(self.target)["changed"], [])
 
+    def test_real_031_upgrade_includes_installed_gate(self):
+        for name in (*updater.BANNERS, "notify-gate.ps1"):
+            raw = (ROOT / "tests/fixtures/public-0.3.1" / name).read_bytes()
+            self.assertEqual(updater.normalized_sha(raw), updater.KNOWN_031_HASHES[name])
+            (self.target / name).write_bytes(raw)
+        (self.target / "VERSION").write_text("0.3.1")
+        result = updater.update(self.target, check=True)
+        self.assertEqual(set(result["changed"]), {*updater.BANNERS, "notify-gate.ps1", "VERSION"})
+        self.assertFalse((self.target / "backups").exists())
+        result = updater.update(self.target)
+        for name in (*updater.BANNERS, "notify-gate.ps1"):
+            self.assertEqual((self.target / name).read_bytes(), (ROOT / "engine" / name).read_bytes())
+            self.assertEqual((Path(result["backup"]) / name).read_bytes(), (ROOT / "tests/fixtures/public-0.3.1" / name).read_bytes())
+        self.assertEqual((self.target / "choice.txt").read_text(), "yunxi")
+        self.assertEqual((self.target / "settings.json").read_text(), '{"hooks":{"custom":true}}')
+        self.assertEqual(updater.update(self.target)["changed"], [])
+
+    def test_gate_private_edit_refuses_entire_update(self):
+        raw = (ROOT / "tests/fixtures/public-0.3.1/notify-gate.ps1").read_bytes()
+        (self.target / "notify-gate.ps1").write_bytes(raw + b"\n# customized\n")
+        with self.assertRaisesRegex(ValueError, "private"):
+            updater.update(self.target)
+        self.assertFalse((self.target / "backups").exists())
+        for name, content in self.originals.items():
+            self.assertEqual((self.target / name).read_bytes(), content)
+
+    def test_missing_gate_is_not_installed_by_update(self):
+        updater.update(self.target)
+        self.assertFalse((self.target / "notify-gate.ps1").exists())
+
+    def test_031_gate_rollback_restores_all_scripts(self):
+        originals = {}
+        for name in (*updater.BANNERS, "notify-gate.ps1"):
+            raw = (ROOT / "tests/fixtures/public-0.3.1" / name).read_bytes()
+            (self.target / name).write_bytes(raw)
+            originals[name] = raw
+        replace = updater.os.replace
+        calls = 0
+        def fail_version(*args):
+            nonlocal calls
+            calls += 1
+            if calls == 4:
+                raise OSError("version write failed after gate")
+            return replace(*args)
+        with mock.patch.object(updater.os, "replace", side_effect=fail_version):
+            with self.assertRaisesRegex(OSError, "version write"):
+                updater.update(self.target)
+        for name, raw in originals.items():
+            self.assertEqual((self.target / name).read_bytes(), raw)
+        self.assertEqual((self.target / "VERSION").read_text(), "0.3.0")
+        self.assertEqual(list(self.target.glob(".voice-update-*")), [])
+
     def test_official_oss_legacy_private_edit_refused(self):
         for name in updater.BANNERS:
             raw = (ROOT / "tests/fixtures/oss-20260806" / name).read_bytes()
@@ -67,7 +119,7 @@ class UpdateTests(unittest.TestCase):
 
     def test_read_only_check(self):
         result = updater.update(self.target, check=True)
-        self.assertEqual(result["version"], "0.3.1")
+        self.assertEqual(result["version"], "0.3.2")
         self.assertEqual(len(result["changed"]), 3)
         self.assertFalse((self.target / "backups").exists())
         self.assertEqual((self.target / "VERSION").read_text(), "0.3.0")
@@ -79,7 +131,7 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual((self.target / "choice.txt").read_text(), "yunxi")
         self.assertEqual((self.target / ".flag").read_text(), "preserve")
         self.assertEqual((self.target / "settings.json").read_text(), '{"hooks":{"custom":true}}')
-        self.assertEqual((self.target / "VERSION").read_text().strip(), "0.3.1")
+        self.assertEqual((self.target / "VERSION").read_text().strip(), "0.3.2")
 
     def test_idempotent_no_extra_backup(self):
         updater.update(self.target)
@@ -133,7 +185,7 @@ class UpdateTests(unittest.TestCase):
         target = self.root / "new-install"
         with mock.patch.object(installer, "DEST", target):
             installer.copy_assets()
-        self.assertEqual((target / "VERSION").read_text().strip(), "0.3.1")
+        self.assertEqual((target / "VERSION").read_text().strip(), "0.3.2")
         self.assertTrue((target / "notify-voice.ps1").is_file())
         self.assertTrue((target / "notify-voice.sh").is_file())
         self.assertFalse((target / "choice.txt").exists())
@@ -157,7 +209,7 @@ class PackageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="voice-package-test-") as directory:
             for platform, wanted, excluded in (("windows", ".ps1", ".sh"), ("macos", ".sh", ".ps1")):
                 info = builder.package(platform, Path(directory))
-                self.assertEqual(info["version"], "0.3.1")
+                self.assertEqual(info["version"], "0.3.2")
                 with zipfile.ZipFile(Path(directory) / info["file"]) as archive:
                     names = archive.namelist()
                     self.assertIn(builder.TOP + "/update.py", names)

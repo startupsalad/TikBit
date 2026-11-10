@@ -22,6 +22,14 @@ KNOWN_OSS_20260806_HASHES = {
     "notify-voice.sh": "0d266c2c6a37ef330985577e9943e8e78984d03160d3c62107139efa2226f642",
 }
 
+# Frozen 0.3.1 release bytes. Do not derive these from the new source engine.
+KNOWN_031_HASHES = {
+    "notify-voice.ps1": "832011a25cfe6324d60b1c0a11add9b51726666d556f8894efe88442f03320db",
+    "notify-voice.sh": "e4cc5f545996144865c430892bf35edaa04194aaac09ebd9749735a5eda487e1",
+    "notify-gate.ps1": "a77ec3b2026e6f13a67b84113078e44d7825be306f27a5cd7492b8d3883c583f",
+}
+OPTIONAL_BANNERS = {"notify-gate.ps1": '# notify-gate.ps1 -- detect '}
+
 
 def normalized_sha(raw):
     return hashlib.sha256(raw.decode("utf-8-sig").replace("\r\n", "\n").encode("utf-8")).hexdigest()
@@ -44,10 +52,15 @@ def update(target, check=False):
     installed = [name for name in BANNERS if (target / name).is_file()]
     if not installed:
         raise ValueError("No installed voice engine found.")
+    installed += [name for name in OPTIONAL_BANNERS if (target / name).is_file()]
     for name in installed:
         installed_bytes = (target / name).read_bytes()
-        known = {KNOWN_PUBLIC_HASHES[name], KNOWN_OSS_20260806_HASHES[name], normalized_sha((ROOT / "engine" / name).read_bytes())}
-        if BANNERS[name] not in installed_bytes.decode("utf-8-sig")[:500] or normalized_sha(installed_bytes) not in known:
+        source = ROOT / "engine" / name
+        if not source.is_file():
+            raise ValueError("Installed engine is not supported by this platform package: " + name)
+        known = {KNOWN_031_HASHES.get(name), KNOWN_PUBLIC_HASHES.get(name), KNOWN_OSS_20260806_HASHES.get(name), normalized_sha(source.read_bytes())}
+        banner = BANNERS.get(name) or OPTIONAL_BANNERS[name]
+        if banner not in installed_bytes.decode("utf-8-sig")[:500] or normalized_sha(installed_bytes) not in known:
             raise ValueError("Custom/private or unsupported old engine detected: " + name + "; refusing to overwrite. Merge manually after backup.")
     names = installed + ["VERSION"]
     sources = {name: (ROOT / "VERSION" if name == "VERSION" else ROOT / "engine" / name) for name in names}

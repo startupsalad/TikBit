@@ -56,6 +56,20 @@ class BrandingTests(unittest.TestCase):
         self.assertNotRegex(text, r"(?i)claudian")
         self.assertIn("TikBit", text)
 
+    def test_detection_example_accepts_new_layout_without_legacy(self):
+        text = (ROOT / "给AI的安装指令.md").read_text(encoding="utf-8-sig")
+        snippet = re.search(r"```python\n(.*?)\n```", text, re.S).group(1)
+        with tempfile.TemporaryDirectory(prefix="voice-new-detection-") as directory:
+            vault = Path(directory)
+            data = vault / ".obsidian/plugins/tikbit-claudian/data.json"
+            data.parent.mkdir(parents=True)
+            data.write_text("{}", encoding="utf-8")
+            (vault / ".obsidian/tikbit/sessions").mkdir(parents=True)
+            namespace = {}
+            with mock.patch.object(Path, "cwd", return_value=vault), mock.patch.dict("os.environ", {"TIKBIT_OBSIDIAN_CONFIG_DIR": ".obsidian"}), contextlib.redirect_stdout(io.StringIO()):
+                exec(compile(snippet, "new-installation-example", "exec"), namespace)
+            self.assertEqual(namespace["version"], "tikbit")
+
     def test_both_packages_include_current_installation_copy(self):
         spec = importlib.util.spec_from_file_location("voice_brand_builder", ROOT / "build_packages.py")
         builder = importlib.util.module_from_spec(spec)

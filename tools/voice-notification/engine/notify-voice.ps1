@@ -111,12 +111,38 @@ function Get-TabIndex {
   $sid = Get-CallerSessionId
   $vaultRoot = $env:TIKBIT_VAULT_ROOT
   if ([string]::IsNullOrWhiteSpace($sid) -or [string]::IsNullOrWhiteSpace($vaultRoot)) { return 0 }
-  $sessionsDir = Join-Path $vaultRoot '.claudian/sessions'
-  $dataPath = Join-Path $vaultRoot '.obsidian/plugins/tikbit-claudian/data.json'
+  $configDir = $env:TIKBIT_OBSIDIAN_CONFIG_DIR
+  if ([string]::IsNullOrWhiteSpace($configDir)) { $configDir = '.obsidian' }
+  if ($configDir -match '[\\/:*?"<>|]' -or $configDir -eq '.' -or $configDir -eq '..') { return 0 }
+  $configRoot = Join-Path $vaultRoot $configDir
+  $pluginRoot = Join-Path $configRoot 'plugins/tikbit-claudian'
   try {
-    $data = Get-Content -LiteralPath $dataPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    $data = Get-Content -LiteralPath (Join-Path $pluginRoot 'data.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     $tabs = @($data.tabManagerState.openTabs)
   } catch { return 0 }
+  # Resolve one active store, never retry individual metadata in a legacy backup.
+  $custom = $data.dataFolder
+  if ($null -ne $custom -and $custom -isnot [string]) { return 0 }
+  if ($custom) { $custom = $custom.Trim() }
+  if ($custom -and $custom -ne '.claudian') {
+    if (-not $custom.StartsWith('.') -or $custom -match '[\\/:*?"<>|]' -or $custom -eq '.' -or $custom -eq '..' -or $custom -ieq '.obsidian') { return 0 }
+    $store = Join-Path $vaultRoot $custom
+  } else {
+    $store = Join-Path $configRoot 'tikbit'
+    $newLayout = Test-Path -LiteralPath $store
+    $manifest = Join-Path $pluginRoot 'manifest.json'
+    if (-not $newLayout -and (Test-Path -LiteralPath $manifest)) {
+      try {
+        $version = (Get-Content -LiteralPath $manifest -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop).version
+        if ($version -notmatch '^(\d+\.\d+\.\d+)(?:-tikbit-(beta|stable)\.(\d+))?$') { return 0 }
+        $baseVersion = [version]$Matches[1]
+        $track = $Matches[2]; $build = [int]$Matches[3]
+        $newLayout = $baseVersion -gt [version]'2.1.4' -or ($baseVersion -eq [version]'2.1.4' -and (($track -eq 'beta' -and $build -ge 77) -or -not $track))
+      } catch { return 0 }
+    }
+    if (-not $newLayout) { $store = Join-Path $vaultRoot '.claudian' }
+  }
+  $sessionsDir = Join-Path $store 'sessions'
   $slot = 0
   for ($i = 0; $i -lt $tabs.Count; $i++) {
     $cid = [string]$tabs[$i].conversationId

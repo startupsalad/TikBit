@@ -1,4 +1,4 @@
-﻿# notify-gate.ps1 -- detect "waiting on Xiong Ge for approval" and speak up.
+﻿# notify-gate.ps1 -- detect "waiting on user for approval" and speak up.
 #
 # Why latency instead of allow-list matching:
 #   Claude Code can force a permission prompt on safety grounds even when
@@ -34,7 +34,7 @@ param(
 )
 $ErrorActionPreference = "SilentlyContinue"
 
-$root       = Join-Path $env:USERPROFILE ".claude"
+$root       = $PSScriptRoot
 $gateDir    = Join-Path $root ".voice_gate"
 $voice      = Join-Path $root "notify-voice.ps1"
 $logPath    = Join-Path $root "voice-notify.log"
@@ -52,62 +52,58 @@ if (-not (Test-Path $gateDir)) {
 # Find tab index (1-6) from session_id by cross-referencing Claudian plugin data.
 # Returns 0 if not found.
 function Get-TabIndex([string]$sid) {
-  if ([string]::IsNullOrWhiteSpace($sid)) { return 0 }
-
-  # Set TIKBIT_VAULT_ROOT when tab-aware Claudian integration is needed.
   $vaultRoot = $env:TIKBIT_VAULT_ROOT
-  if ([string]::IsNullOrWhiteSpace($vaultRoot)) { return 0 }
-
-  $sessionsDir = $vaultRoot + "/.claudian/sessions"
-  $dataPath    = $vaultRoot + "/.obsidian/plugins/tikbit-claudian/data.json"
-  if (-not (Test-Path $sessionsDir)) { return 0 }
-  if (-not (Test-Path $dataPath))    { return 0 }
-
-  # Same resolution logic as Get-TabIndex in notify-voice.ps1 -- change one, change both.
-  # openTabs order IS the number the user sees, so only touch those few meta files
-  # (never scan the whole sessions dir; it grows into the hundreds).
+  if ([string]::IsNullOrWhiteSpace($sid) -or [string]::IsNullOrWhiteSpace($vaultRoot)) { return 0 }
+  $configDir = $env:TIKBIT_OBSIDIAN_CONFIG_DIR
+  if ([string]::IsNullOrWhiteSpace($configDir)) { $configDir = '.obsidian' }
+  if ($configDir -match '[\\/:*?"<>|]' -or $configDir -eq '.' -or $configDir -eq '..') { return 0 }
+  $configRoot = Join-Path $vaultRoot $configDir
+  $pluginRoot = Join-Path $configRoot 'plugins/tikbit-claudian'
   try {
-    $data = Get-Content $dataPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $data = Get-Content -LiteralPath (Join-Path $pluginRoot 'data.json') -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     $tabs = @($data.tabManagerState.openTabs)
   } catch { return 0 }
-  if ($tabs.Count -eq 0) { return 0 }
-
-  [int64]$freshStamp = -1
-  $freshSlot = 0
-
+  # Resolve one active store, never retry individual metadata in a legacy backup.
+  $custom = $data.dataFolder
+  if ($null -ne $custom -and $custom -isnot [string]) { return 0 }
+  if ($custom) { $custom = $custom.Trim() }
+  if ($custom -and $custom -ne '.claudian') {
+    if (-not $custom.StartsWith('.') -or $custom -match '[\\/:*?"<>|]' -or $custom -eq '.' -or $custom -eq '..' -or $custom -ieq '.obsidian') { return 0 }
+    $store = Join-Path $vaultRoot $custom
+  } else {
+    $store = Join-Path $configRoot 'tikbit'
+    $newLayout = Test-Path -LiteralPath $store
+    $manifest = Join-Path $pluginRoot 'manifest.json'
+    if (-not $newLayout -and (Test-Path -LiteralPath $manifest)) {
+      try {
+        $version = (Get-Content -LiteralPath $manifest -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop).version
+        if ($version -notmatch '^(\d+\.\d+\.\d+)(?:-tikbit-(beta|stable)\.(\d+))?$') { return 0 }
+        $baseVersion = [version]$Matches[1]
+        $track = $Matches[2]; $build = [int]$Matches[3]
+        $newLayout = $baseVersion -gt [version]'2.1.4' -or ($baseVersion -eq [version]'2.1.4' -and (($track -eq 'beta' -and $build -ge 77) -or -not $track))
+      } catch { return 0 }
+    }
+    if (-not $newLayout) { $store = Join-Path $vaultRoot '.claudian' }
+  }
+  $sessionsDir = Join-Path $store 'sessions'
+  $slot = 0
   for ($i = 0; $i -lt $tabs.Count; $i++) {
-    $cid = "$($tabs[$i].conversationId)"
-    if ([string]::IsNullOrWhiteSpace($cid)) { continue }
-    $metaPath = Join-Path $sessionsDir ($cid + ".meta.json")
-    if (-not (Test-Path $metaPath)) { continue }
-    try { $meta = Get-Content $metaPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { continue }
-
-    $mSid = "$($meta.sessionId)"
-    $pSid = ""
-    $threadSid = ""
+    $cid = [string]$tabs[$i].conversationId
+    if ([string]::IsNullOrWhiteSpace($cid) -or $cid -match '[\\/:*?"<>|]' -or $cid -eq '.' -or $cid -eq '..') { continue }
+    try {
+      $meta = Get-Content -LiteralPath (Join-Path $sessionsDir ($cid + '.meta.json')) -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    } catch { continue }
+    $ids = @([string]$meta.sessionId)
     if ($meta.providerState) {
-      $pSid = "$($meta.providerState.providerSessionId)"
-      $threadSid = "$($meta.providerState.threadId)"
+      $ids += [string]$meta.providerState.providerSessionId
+      $ids += [string]$meta.providerState.threadId
     }
-
-    if ($mSid -eq $sid -or $pSid -eq $sid -or $threadSid -eq $sid) { return ($i + 1) }
-
-    # No sessionId on disk = that tab has never finished a turn = "fresh" candidate.
-    if ([string]::IsNullOrWhiteSpace($mSid) -and [string]::IsNullOrWhiteSpace($pSid) -and [string]::IsNullOrWhiteSpace($threadSid)) {
-      [int64]$stamp = 0
-      [int64]::TryParse("$($meta.updatedAt)", [ref]$stamp) | Out-Null
-      if ($stamp -ge $freshStamp) { $freshStamp = $stamp; $freshSlot = $i + 1 }
+    if ($ids -contains $sid) {
+      if ($slot -gt 0) { return 0 }
+      $slot = $i + 1
     }
   }
-
-  # Fallback by elimination: on a brand-new conversation's FIRST turn the plugin has
-  # not written sessionId yet, so the exact match above always misses. The newest
-  # not-yet-persisted tab is the only unclaimed slot -- that is us.
-  if ($freshSlot -gt 0) {
-    Log "tab resolve: sid=$sid no exact match -> inferred fresh tab $freshSlot"
-    return $freshSlot
-  }
-  return 0
+  return $slot
 }
 
 # Assign / read a stable session label ("对话一", "对话二"...).
@@ -231,6 +227,10 @@ switch ($Mode) {
     # Find tab index (1-6) from Claudian plugin data
     $slot = Get-TabIndex $Key
     Log "perm: session=$Key -> tab $slot"
+
+    # A hook's payload is the Claude identity; unknown visible-tab callers mute.
+    if (-not [string]::IsNullOrWhiteSpace($env:TIKBIT_VAULT_ROOT) -and $slot -le 0) { exit 0 }
+    $env:CLAUDE_CODE_SESSION_ID = $Key
 
     # Pass slot number to voice script (0 = fallback to generic perm clip)
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $voice -Mode perm -B64 "$slot"

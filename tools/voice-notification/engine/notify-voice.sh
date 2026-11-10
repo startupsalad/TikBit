@@ -100,15 +100,47 @@ def tab_index(root, sid):
     if not sid:
         return 0
     try:
-        with open(Path(root) / '.obsidian/plugins/tikbit-claudian/data.json', encoding='utf-8-sig') as f:
-            tabs = json.load(f).get('tabManagerState', {}).get('openTabs') or []
+        config = os.environ.get('TIKBIT_OBSIDIAN_CONFIG_DIR', '')
+        if not config.strip():
+            config = '.obsidian'
+        if config in ('.', '..') or re.search(r'[\\/:*?"<>|]', config):
+            return 0
+        config_root = Path(root) / config
+        plugin_root = config_root / 'plugins/tikbit-claudian'
+        with open(plugin_root / 'data.json', encoding='utf-8-sig') as f:
+            data = json.load(f)
+        tabs = data.get('tabManagerState', {}).get('openTabs') or []
+        custom = data.get('dataFolder')
+        if custom is not None and not isinstance(custom, str):
+            return 0
+        custom = (custom or '').strip()
+        if custom and custom != '.claudian':
+            if not custom.startswith('.') or custom in ('.', '..') or custom.lower() == '.obsidian' or re.search(r'[\\/:*?"<>|]', custom):
+                return 0
+            store = Path(root) / custom
+        else:
+            # Pick the active store once; never fall back per metadata file.
+            store = config_root / 'tikbit'
+            new_layout = store.exists()
+            manifest = plugin_root / 'manifest.json'
+            if not new_layout and manifest.exists():
+                with open(manifest, encoding='utf-8-sig') as f:
+                    version = json.load(f).get('version')
+                match = re.fullmatch(r'(\d+\.\d+\.\d+)(?:-tikbit-(beta|stable)\.(\d+))?', version or '')
+                if not match:
+                    return 0
+                base = tuple(map(int, match[1].split('.')))
+                track, build = match[2], int(match[3] or 0)
+                new_layout = base > (2, 1, 4) or (base == (2, 1, 4) and (not track or (track == 'beta' and build >= 77)))
+            if not new_layout:
+                store = Path(root) / '.claudian'
         slot = 0
         for i, tab in enumerate(tabs):
             cid = str(tab.get('conversationId') or '')
             if not cid or cid in ('.', '..') or re.search(r'[\\/:*?"<>|]', cid):
                 continue
             try:
-                with open(Path(root) / '.claudian/sessions' / (cid + '.meta.json'), encoding='utf-8-sig') as f:
+                with open(store / 'sessions' / (cid + '.meta.json'), encoding='utf-8-sig') as f:
                     meta = json.load(f)
                 ps = meta.get('providerState') or {}
                 ids = (meta.get('sessionId'), ps.get('providerSessionId'), ps.get('threadId'))
