@@ -26,6 +26,19 @@ class DesktopPublishTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'matching GitHub'):
                 PUBLISHED_CATALOG(b'{"schemaVersion":1,"tools":[]}')
 
+    def test_python_certificate_gap_can_use_node_without_disabling_tls_verification(self):
+        raw = b'{"schemaVersion":2,"tools":[]}'
+        wrapper = json.dumps({'encoding': 'base64', 'content': PUBLISH.base64.b64encode(raw).decode()}).encode()
+        with patch.object(PUBLISH.urllib.request, 'build_opener') as opener, patch.object(PUBLISH.subprocess, 'run') as run:
+            opener.return_value.open.side_effect = PUBLISH.urllib.error.URLError(PUBLISH.ssl.SSLCertVerificationError('Missing issuer'))
+            run.return_value.returncode = 0
+            run.return_value.stdout = wrapper
+            self.assertEqual(PUBLISHED_CATALOG(raw), raw)
+            command = run.call_args.args[0]
+            self.assertEqual(command[0], 'node')
+            self.assertNotIn('rejectUnauthorized', command[2])
+            self.assertNotIn('NODE_TLS_REJECT_UNAUTHORIZED', str(run.call_args))
+
     def test_immutable_upload_sends_server_enforced_overwrite_guard(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

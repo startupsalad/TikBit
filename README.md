@@ -29,6 +29,8 @@ python scripts/publish-desktop-tools.py --directory /path/to/complete-desktop --
 
 普通工具可独立更新，无须每次发布插件。插件发布前运行插件源码的 `node scripts/check-tool-distribution.mjs`，验证官方 GitHub 清单与 OSS 一致、所有包已就位；`upload-latest.sh` 已接入此检查。新客户端仍校验安装包大小、SHA256 和受信路径；旧客户端保持原 GitHub 行为。
 
+如果本机 Python 缺少 GitHub 证书链，同步器可借助工作台已有 Node.js 的默认 HTTPS 信任链读取官方清单；不会关闭证书校验，不下载新依赖。
+
 ## 三档推荐
 
 ### 必装

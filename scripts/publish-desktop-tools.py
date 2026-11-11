@@ -9,6 +9,8 @@ import json
 import os
 from pathlib import Path
 import re
+import ssl
+import subprocess
 import tempfile
 import urllib.error
 import urllib.parse
@@ -89,10 +91,31 @@ def read_remote(key, limit):
 def published_catalog(local):
     url = 'https://api.github.com/repos/startupsalad/TikBit/contents/desktop/catalog.json?ref=main'
     request = urllib.request.Request(url, headers={'User-Agent': 'TikBit-Tools-Publisher', 'Accept': 'application/vnd.github+json'})
-    with urllib.request.build_opener(NoRedirect()).open(request, timeout=30) as response:
-        data = response.read(1024 * 1024 + 1)
-        if response.status != 200 or len(data) > 1024 * 1024:
-            raise ValueError('Official GitHub catalog unavailable')
+    try:
+        with urllib.request.build_opener(NoRedirect()).open(request, timeout=30) as response:
+            data = response.read(1024 * 1024 + 1)
+            if response.status != 200 or len(data) > 1024 * 1024:
+                raise ValueError('Official GitHub catalog unavailable')
+    except urllib.error.URLError as error:
+        if not isinstance(error.reason, ssl.SSLCertVerificationError):
+            raise
+        script = """
+const https = require('https');
+const request = https.get(process.argv[1], { headers: { 'User-Agent': 'TikBit-Tools-Publisher', Accept: 'application/vnd.github+json' } }, response => {
+  if (response.statusCode !== 200) { response.resume(); process.exitCode = 1; return; }
+  const chunks = []; let size = 0;
+  response.on('data', chunk => { size += chunk.length; if (size > 1024 * 1024) response.destroy(new Error('Oversized catalog')); else chunks.push(chunk); });
+  response.on('end', () => process.stdout.write(Buffer.concat(chunks)));
+  response.on('error', () => { process.exitCode = 1; });
+});
+request.setTimeout(30000, () => request.destroy(new Error('Catalog timeout')));
+request.on('error', () => { process.exitCode = 1; });
+"""
+        result = subprocess.run(['node', '-e', script, url], capture_output=True, timeout=45,
+                                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+        if result.returncode or len(result.stdout) > 1024 * 1024:
+            raise ValueError('Official GitHub catalog unavailable through verified TLS')
+        data = result.stdout
     wrapper = json.loads(data)
     if wrapper.get('encoding') != 'base64' or not isinstance(wrapper.get('content'), str):
         raise ValueError('Invalid official GitHub catalog')
