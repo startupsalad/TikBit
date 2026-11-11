@@ -9,9 +9,23 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location('desktop_publish', ROOT / 'scripts/publish-desktop-tools.py')
 PUBLISH = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PUBLISH)
+PUBLISHED_CATALOG = PUBLISH.published_catalog
 
 
 class DesktopPublishTests(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(patch.object(PUBLISH, 'published_catalog', side_effect=lambda raw: raw))
+
+    def test_uses_official_bytes_despite_local_line_endings_and_rejects_unpublished_changes(self):
+        raw = b'{\n  "schemaVersion": 2,\n  "tools": []\n}\n'
+        with patch.object(PUBLISH.urllib.request, 'build_opener') as opener:
+            response = opener.return_value.open.return_value.__enter__.return_value
+            response.status = 200
+            response.read.return_value = json.dumps({'encoding': 'base64', 'content': PUBLISH.base64.b64encode(raw).decode()}).encode()
+            self.assertEqual(PUBLISHED_CATALOG(raw.replace(b'\n', b'\r\n')), raw)
+            with self.assertRaisesRegex(ValueError, 'matching GitHub'):
+                PUBLISHED_CATALOG(b'{"schemaVersion":1,"tools":[]}')
+
     def test_immutable_upload_sends_server_enforced_overwrite_guard(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

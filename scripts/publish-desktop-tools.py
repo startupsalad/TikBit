@@ -6,8 +6,10 @@ import email.utils
 import hashlib
 import hmac
 import json
+import os
 from pathlib import Path
 import re
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -84,6 +86,22 @@ def read_remote(key, limit):
         raise
 
 
+def published_catalog(local):
+    url = 'https://api.github.com/repos/startupsalad/TikBit/contents/desktop/catalog.json?ref=main'
+    request = urllib.request.Request(url, headers={'User-Agent': 'TikBit-Tools-Publisher', 'Accept': 'application/vnd.github+json'})
+    with urllib.request.build_opener(NoRedirect()).open(request, timeout=30) as response:
+        data = response.read(1024 * 1024 + 1)
+        if response.status != 200 or len(data) > 1024 * 1024:
+            raise ValueError('Official GitHub catalog unavailable')
+    wrapper = json.loads(data)
+    if wrapper.get('encoding') != 'base64' or not isinstance(wrapper.get('content'), str):
+        raise ValueError('Invalid official GitHub catalog')
+    raw = base64.b64decode(wrapper['content'])
+    if len(raw) > 512 * 1024 or json.loads(raw) != json.loads(local):
+        raise ValueError('Publish the matching GitHub catalog before OSS synchronization')
+    return raw
+
+
 def upload(file, key, immutable, oss_config):
     config = configparser.ConfigParser(interpolation=None)
     if not config.read(Path(oss_config).expanduser(), encoding='utf-8-sig'):
@@ -115,41 +133,50 @@ def publish(directory, apply=False, oss_config='~/.ossutilconfig', report=None):
     raw, packages = artifacts(directory)
     receipt = {'applied': apply, 'catalogSha256': sha(raw), 'packages': len(packages), 'bytes': sum(item[2] for item in packages)}
     if apply:
-        previous = read_remote('catalog.json', 512 * 1024)
-        for file, key, size, digest in packages:
-            existing = read_remote(key, MAX_BYTES)
-            if existing is None:
-                upload(file, key, True, oss_config)
-                existing = read_remote(key, MAX_BYTES)
-                if existing is None or len(existing) != size or sha(existing) != digest:
-                    raise ValueError(f'Package readback failed: {key}')
-            elif len(existing) != size or sha(existing) != digest:
-                raise ValueError(f'Immutable object differs: {key}; increase VERSION')
-            print(json.dumps({'verified': key, 'bytes': size, 'sha256': digest}), flush=True)
-        if (directory / 'catalog.json').read_bytes() != raw:
-            raise ValueError('Catalog changed during publication')
-        frozen_key = f'catalogs/{sha(raw)}.json'
-        frozen = read_remote(frozen_key, 512 * 1024)
-        if frozen is None:
-            upload(directory / 'catalog.json', frozen_key, True, oss_config)
-            frozen = read_remote(frozen_key, 512 * 1024)
-        if frozen != raw:
-            raise ValueError('Immutable catalog readback failed')
-        current = read_remote('catalog.json', 512 * 1024)
-        if current != previous and current != raw:
-            raise ValueError('Concurrent catalog publication detected')
-        if current != raw:
-            if previous is not None:
-                if report is None:
-                    raise ValueError('A report path is required to preserve the previous catalog')
-                report.with_suffix('.previous-catalog.json').write_bytes(previous)
-            upload(directory / 'catalog.json', 'catalog.json', False, oss_config)
-        if read_remote('catalog.json', 512 * 1024) != raw:
-            raise ValueError('Catalog readback failed; preserve evidence before recovery')
+        canonical = published_catalog(raw)
+        receipt['catalogSha256'] = sha(canonical)
+        with tempfile.TemporaryDirectory(prefix='desktop-catalog-', dir=os.environ.get('TEMP')) as temporary:
+            file = Path(temporary) / 'catalog.json'
+            file.write_bytes(canonical)
+            publish_artifacts(directory, raw, canonical, file, packages, oss_config, report)
     if report:
         report.write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt), flush=True)
     return receipt
+
+
+def publish_artifacts(directory, local, raw, catalog_file, packages, oss_config, report):
+    previous = read_remote('catalog.json', 512 * 1024)
+    for file, key, size, digest in packages:
+        existing = read_remote(key, MAX_BYTES)
+        if existing is None:
+            upload(file, key, True, oss_config)
+            existing = read_remote(key, MAX_BYTES)
+            if existing is None or len(existing) != size or sha(existing) != digest:
+                raise ValueError(f'Package readback failed: {key}')
+        elif len(existing) != size or sha(existing) != digest:
+            raise ValueError(f'Immutable object differs: {key}; increase VERSION')
+        print(json.dumps({'verified': key, 'bytes': size, 'sha256': digest}), flush=True)
+    if (directory / 'catalog.json').read_bytes() != local:
+        raise ValueError('Catalog changed during publication')
+    frozen_key = f'catalogs/{sha(raw)}.json'
+    frozen = read_remote(frozen_key, 512 * 1024)
+    if frozen is None:
+        upload(catalog_file, frozen_key, True, oss_config)
+        frozen = read_remote(frozen_key, 512 * 1024)
+    if frozen != raw:
+        raise ValueError('Immutable catalog readback failed')
+    current = read_remote('catalog.json', 512 * 1024)
+    if current != previous and current != raw:
+        raise ValueError('Concurrent catalog publication detected')
+    if current != raw:
+        if previous is not None:
+            if report is None:
+                raise ValueError('A report path is required to preserve the previous catalog')
+            report.with_suffix('.previous-catalog.json').write_bytes(previous)
+        upload(catalog_file, 'catalog.json', False, oss_config)
+    if read_remote('catalog.json', 512 * 1024) != raw:
+        raise ValueError('Catalog readback failed; preserve evidence before recovery')
 
 
 def main():
