@@ -1,5 +1,6 @@
 """Safety checks for script-only updates and unpublished local packages."""
 import importlib.util
+import os
 import json
 from pathlib import Path
 import tempfile
@@ -119,7 +120,7 @@ class UpdateTests(unittest.TestCase):
 
     def test_read_only_check(self):
         result = updater.update(self.target, check=True)
-        self.assertEqual(result["version"], "0.3.2")
+        self.assertEqual(result["version"], "0.3.3")
         self.assertEqual(len(result["changed"]), 3)
         self.assertFalse((self.target / "backups").exists())
         self.assertEqual((self.target / "VERSION").read_text(), "0.3.0")
@@ -131,7 +132,7 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual((self.target / "choice.txt").read_text(), "yunxi")
         self.assertEqual((self.target / ".flag").read_text(), "preserve")
         self.assertEqual((self.target / "settings.json").read_text(), '{"hooks":{"custom":true}}')
-        self.assertEqual((self.target / "VERSION").read_text().strip(), "0.3.2")
+        self.assertEqual((self.target / "VERSION").read_text().strip(), "0.3.3")
 
     def test_idempotent_no_extra_backup(self):
         updater.update(self.target)
@@ -181,11 +182,33 @@ class UpdateTests(unittest.TestCase):
         self.assertNotIn('"Stop"', content)
         self.assertIn("notify-voice.sh", content)
 
+    def test_actual_claude_home_receives_hooks_without_fabricating_codex_hooks(self):
+        claude = self.root / 'real-claude'; codex = self.root / 'real-codex'
+        claude.mkdir(); codex.mkdir()
+        config = claude / 'settings.json'
+        config.write_text(json.dumps({'env': {'CUSTOM': 'keep'}, 'hooks': {'Stop': [{'hooks': [
+            {'command': 'notify-voice -Mode done-if-flagged'}, {'command': 'my-private-check'}]}]}}), encoding='utf-8')
+        with mock.patch.dict(os.environ, {'CLAUDE_CONFIG_DIR': str(claude), 'CODEX_HOME': str(codex)}), mock.patch.object(installer, 'DEST', self.target):
+            self.assertTrue(installer.wire_claude_code())
+            self.assertTrue(installer.wire_claude_code())
+        data = json.loads(config.read_text(encoding='utf-8'))
+        self.assertEqual(data['env'], {'CUSTOM': 'keep'})
+        self.assertIn('my-private-check', str(data['hooks']['Stop']))
+        self.assertNotIn('done-if-flagged', str(data))
+        self.assertEqual(len(data['hooks']['PreToolUse']), 1)
+        self.assertFalse((codex / 'hooks.json').exists())
+
+    def test_invalid_hook_configuration_is_preserved(self):
+        file = self.root / 'invalid-settings.json'
+        file.write_bytes(b'{"hooks":[] ,"private":true}')
+        self.assertFalse(installer.wire_settings_json(file, 'test'))
+        self.assertEqual(file.read_bytes(), b'{"hooks":[] ,"private":true}')
+
     def test_install_copies_version_without_user_choices(self):
         target = self.root / "new-install"
         with mock.patch.object(installer, "DEST", target):
             installer.copy_assets()
-        self.assertEqual((target / "VERSION").read_text().strip(), "0.3.2")
+        self.assertEqual((target / "VERSION").read_text().strip(), "0.3.3")
         self.assertTrue((target / "notify-voice.ps1").is_file())
         self.assertTrue((target / "notify-voice.sh").is_file())
         self.assertFalse((target / "choice.txt").exists())
@@ -203,13 +226,69 @@ class UpdateTests(unittest.TestCase):
             updater.update(self.root / "absent")
         self.assertFalse((self.root / "absent").exists())
 
+    def test_cli_rule_upgrade_uses_both_actual_homes_and_is_idempotent(self):
+        env = {'CLAUDE_CONFIG_DIR': str(self.root / 'active-claude'), 'CODEX_HOME': str(self.root / 'active-codex')}
+        with mock.patch.dict(os.environ, env), mock.patch.object(updater.Path, 'home', return_value=self.root):
+            check = updater.update(self.target, check=True, sync_rules=True)
+            self.assertEqual(len(check['rules']['changed']), 2)
+            self.assertFalse((self.root / 'active-codex').exists())
+            updater.update(self.target, sync_rules=True)
+            result = updater.update(self.target, sync_rules=True)
+            self.assertEqual(result['rules']['changed'], [])
+            self.assertEqual(result['changed'], [])
+            self.assertIn('request_user_input_async', (self.root / 'active-codex/AGENTS.md').read_text(encoding='utf-8'))
+
+    def test_existing_private_install_is_not_overwritten(self):
+        (self.target / 'notify-voice.ps1').write_bytes(b'private implementation')
+        with mock.patch.object(installer, 'DEST', self.target):
+            with self.assertRaises(ValueError):
+                installer.copy_assets()
+        self.assertEqual((self.target / 'notify-voice.ps1').read_bytes(), b'private implementation')
+
+    def test_rule_failure_restores_engine_and_both_client_rules(self):
+        env = {'CLAUDE_CONFIG_DIR': str(self.root / 'active-claude'), 'CODEX_HOME': str(self.root / 'active-codex')}
+        real = os.replace
+        def replace(source, target):
+            if Path(target).name == 'AGENTS.md':
+                raise OSError('simulated rule failure')
+            return real(source, target)
+        with mock.patch.dict(os.environ, env), mock.patch.object(updater.Path, 'home', return_value=self.root), mock.patch.object(updater.os, 'replace', side_effect=replace):
+            with self.assertRaises(OSError):
+                updater.update(self.target, sync_rules=True)
+        for file, content in self.originals.items():
+            self.assertEqual((self.target / file).read_bytes(), content)
+        self.assertFalse((self.root / 'active-claude/CLAUDE.md').exists())
+        self.assertFalse((self.root / 'active-codex/AGENTS.md').exists())
+
+    def test_real_032_upgrade_with_both_platforms_and_gate(self):
+        for name in ['notify-voice.ps1', 'notify-voice.sh', 'notify-gate.ps1']:
+            raw = (ROOT / 'tests/fixtures/public-0.3.2' / name).read_bytes()
+            self.assertEqual(updater.normalized_sha(raw), updater.KNOWN_032_HASHES[name])
+            (self.target / name).write_bytes(raw)
+        updater.update(self.target)
+        for name in ['notify-voice.ps1', 'notify-voice.sh', 'notify-gate.ps1']:
+            self.assertEqual((self.target / name).read_bytes(), (ROOT / 'engine' / name).read_bytes())
+
 
 class PackageTests(unittest.TestCase):
+    def test_single_tool_build_retains_other_catalog_entries(self):
+        desktop_builder = load('voice_desktop_builder', ROOT.parents[1] / 'scripts/build-desktop-tools.py')
+        old = json.loads((ROOT.parents[1] / 'desktop/catalog.json').read_text(encoding='utf-8'))
+        with tempfile.TemporaryDirectory(prefix='voice-desktop-package-') as directory:
+            output = Path(directory)
+            desktop_builder.build(output, tool_ids=['voice-notification'])
+            new = json.loads((output / 'catalog.json').read_text(encoding='utf-8'))
+            self.assertEqual([t for t in old['tools'] if t['id'] != 'voice-notification'], [t for t in new['tools'] if t['id'] != 'voice-notification'])
+            voice = next(t for t in new['tools'] if t['id'] == 'voice-notification')
+            with zipfile.ZipFile(output / 'packages' / Path(voice['install']['url']).name) as archive:
+                self.assertIn('skills/task-voice-notification/resources/engine/UI_NOTIFICATIONS', archive.namelist())
+                self.assertIn('skills/task-voice-notification/resources/engine/notification-rule.md', archive.namelist())
+                self.assertIsNone(archive.testzip())
     def test_both_platforms_are_self_contained(self):
         with tempfile.TemporaryDirectory(prefix="voice-package-test-") as directory:
             for platform, wanted, excluded in (("windows", ".ps1", ".sh"), ("macos", ".sh", ".ps1")):
                 info = builder.package(platform, Path(directory))
-                self.assertEqual(info["version"], "0.3.2")
+                self.assertEqual(info["version"], "0.3.3")
                 with zipfile.ZipFile(Path(directory) / info["file"]) as archive:
                     names = archive.namelist()
                     self.assertIn(builder.TOP + "/update.py", names)

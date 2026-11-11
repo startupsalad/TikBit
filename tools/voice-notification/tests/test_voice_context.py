@@ -107,7 +107,7 @@ function Speak-Sapi([string]$b64) {
         self.assertTrue(found, "Need PowerShell or Bash to run engine tests")
         return found
 
-    def run_engine(self, engine, mode="done", dry=True, extra=None):
+    def run_engine(self, engine, mode="done", dry=True, extra=None, payload='{"message":"waiting"}'):
         if self.audio.exists():
             self.audio.unlink()
         if engine == "windows":
@@ -122,7 +122,7 @@ function Speak-Sapi([string]$b64) {
                 args += ["--dry-run"]
             elif extra:
                 args += [extra]
-        run = subprocess.run(args, env=self.env, input='{"message":"waiting"}', capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=25)
+        run = subprocess.run(args, env=self.env, input=payload, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=25)
         self.assertEqual(run.returncode, 0, engine + ": " + run.stderr)
         if dry:
             self.assertFalse(self.audio.exists(), "DryRun played audio")
@@ -141,6 +141,17 @@ function Speak-Sapi([string]$b64) {
     def multitab(self, tid=MAIN):
         self.env["TIKBIT_VAULT_ROOT"] = str(self.vault)
         self.env["CODEX_THREAD_ID"] = tid
+
+    def test_managed_ui_owns_only_matching_hook_notifications(self):
+        self.multitab()
+        self.env['TIKBIT_VOICE_UI_MANAGED'] = '1'
+        for engine in self.engines():
+            self.assertEqual(self.run_engine(engine, 'ask', False,
+                payload='{"hook_event_name":"PreToolUse","tool_name":"AskUserQuestion"}'), '')
+            self.assertEqual(self.run_engine(engine, 'notify', False,
+                payload='{"hook_event_name":"Notification","message":"permission needed"}'), '')
+            self.assertIn('dialog9_ask.mp3', self.run_engine(engine, 'ask', False, payload=''))
+            self.assertIn('dialog9_stuck.mp3', self.run_engine(engine, 'stuck', False))
 
     def test_legacy_child_completion_does_not_play(self):
         self.multitab(CHILD)

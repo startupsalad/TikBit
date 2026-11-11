@@ -16,11 +16,11 @@ def package(platform, output):
     if destination.exists():
         raise ValueError("Refusing to overwrite existing package: " + str(destination))
     selected = []
-    for name in ("INSTALL.md", "CHANGELOG.md", "VERSION", "install.py", "update.py", "给AI的安装指令.md", "📖 使用说明.md"):
+    for name in ("INSTALL.md", "CHANGELOG.md", "VERSION", "install.py", "update.py", "rules.py", "给AI的安装指令.md", "📖 使用说明.md"):
         selected.append(ROOT / name)
     selected.append(ROOT / ("选择语音.bat" if platform == "windows" else "选择语音.command"))
     for path in (ROOT / "engine").iterdir():
-        if path.suffix == ".py" or path.suffix == (".ps1" if platform == "windows" else ".sh"):
+        if path.name == 'UI_NOTIFICATIONS' or path.suffix in ('.md', '.py') or path.suffix == (".ps1" if platform == "windows" else ".sh"):
             selected.append(path)
     selected.extend(path for path in (ROOT / "voice_clips").rglob("*.mp3") if path.is_file())
     output.mkdir(parents=True, exist_ok=True)

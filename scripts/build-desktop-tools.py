@@ -73,11 +73,21 @@ def archive_payload(archive_path, recipe):
     return payload, [{'name': name} for name in skill_names]
 
 
-def build(output, external_sources=None):
+def build(output, external_sources=None, tool_ids=None):
     external_sources = external_sources or {}
     recipes = json.loads((ROOT / 'desktop-tools.json').read_text(encoding='utf-8'))['tools']
+    if tool_ids:
+        unknown = set(tool_ids) - {recipe['id'] for recipe in recipes}
+        if unknown:
+            raise ValueError('Unknown tool IDs: ' + ', '.join(sorted(unknown)))
+        recipes = [recipe for recipe in recipes if recipe['id'] in tool_ids]
     catalog = json.loads((ROOT / 'catalog.json').read_text(encoding='utf-8'))
     entries = {tool['id']: dict(tool) for tool in catalog['tools']}
+    if tool_ids:
+        previous = json.loads((ROOT / 'desktop/catalog.json').read_text(encoding='utf-8'))
+        for entry in previous['tools']:
+            if entry['id'] in entries and entry['id'] not in tool_ids:
+                entries[entry['id']] = entry
     output.mkdir(parents=True, exist_ok=True)
     (output / 'packages').mkdir(exist_ok=True)
     for recipe in recipes:
@@ -210,5 +220,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, default=ROOT / 'desktop')
     parser.add_argument('--ppt-core', type=Path)
+    parser.add_argument('--tool', action='append', help='Rebuild only this tool and retain other published catalog entries')
     args = parser.parse_args()
-    build(args.output.resolve(), {'ppt-core': args.ppt_core})
+    build(args.output.resolve(), {'ppt-core': args.ppt_core}, args.tool)

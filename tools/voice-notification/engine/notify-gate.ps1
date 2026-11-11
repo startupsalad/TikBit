@@ -33,6 +33,7 @@ param(
   [int]$Grace     = 900
 )
 $ErrorActionPreference = "SilentlyContinue"
+if ($env:TIKBIT_VOICE_UI_MANAGED -eq '1') { exit 0 }
 
 $root       = $PSScriptRoot
 $gateDir    = Join-Path $root ".voice_gate"

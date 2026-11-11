@@ -46,7 +46,7 @@ python scripts/publish-desktop-tools.py --directory /path/to/complete-desktop --
 
 | 工具 | 适合场景 |
 |:---|:---|
-| `voice-notification` | 主对话完成/等待提醒；0.3.2修复数据迁移后静音，兼容旧版及自定义目录，支持安全更新 |
+| `voice-notification` | 主对话完成、授权和选择提醒；0.3.3补齐双引擎规则与隔离目录，支持配套工作台弹窗去重及安全更新 |
 | `writing-humanizer` | 经常写文案、陈述稿、讲稿和其他对外文字 |
 
 ### 按需

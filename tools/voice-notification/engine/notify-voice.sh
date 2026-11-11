@@ -244,7 +244,12 @@ case "$MODE" in
   stuck) announce stuck ;;
   error) announce error ;;
   wait)  announce wait ;;
-  ask)   announce ask ;;
+  ask)
+    if [ "${TIKBIT_VOICE_UI_MANAGED:-}" = "1" ] && [ ! -t 0 ]; then
+      raw="$(cat)"
+      if [[ "$raw" == *'"hook_event_name"'* && "$raw" == *'PreToolUse'* ]]; then exit 0; fi
+    fi
+    announce ask ;;
   perm)
     # Legacy explicit slot cannot override caller identity.
     announce perm "${2:-0}" ;;
@@ -258,6 +263,7 @@ case "$MODE" in
       *permission*|*approve*|*allow*|*authoriz*|*授权*|*批准*) key="perm" ;;
       *error*|*failed*|*stuck*|*出错*|*失败*)                 key="stuck" ;;
     esac
+    if [ "$key" = "perm" ] && [ "${TIKBIT_VOICE_UI_MANAGED:-}" = "1" ] && [[ "$raw" == *'"hook_event_name"'* && "$raw" == *'Notification'* ]]; then exit 0; fi
     announce "$key" ;;
   say)
     txt="$2"; [ -z "$txt" ] && exit 0
