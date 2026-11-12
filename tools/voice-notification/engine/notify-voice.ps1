@@ -277,7 +277,13 @@ switch ($Mode) {
   "stuck" { Announce "stuck" }
   "error" { Announce "error" }
   "wait"  { Announce "wait" }
-  "ask"   { Announce "ask" }
+  "ask"   {
+    if ($env:TIKBIT_VOICE_UI_MANAGED -eq '1' -and [Console]::IsInputRedirected) {
+      $hook = [Console]::In.ReadToEnd()
+      if ($hook -match '"hook_event_name"\s*:\s*"PreToolUse"') { exit 0 }
+    }
+    Announce "ask"
+  }
   "perm"  {
     # Legacy B64 slot is accepted syntactically but never overrides identity.
     $slot = 0
@@ -304,6 +310,7 @@ switch ($Mode) {
     $key = "wait"
     if     ($m -match "(?i)permission|approve|allow|authoriz") { $key = "perm" }
     elseif ($m -match "(?i)error|failed|stuck")                { $key = "stuck" }
+    if ($key -eq 'perm' -and $env:TIKBIT_VOICE_UI_MANAGED -eq '1' -and $raw -match '"hook_event_name"\s*:\s*"Notification"') { exit 0 }
     Announce $key
   }
   default { Speak-Sapi $B64 }

@@ -113,10 +113,10 @@
       ],
       "recommendation": "recommended",
       "install": {
-        "version": "0.3.2",
-        "url": "https://raw.githubusercontent.com/startupsalad/TikBit/main/desktop/packages/voice-notification-0.3.2.zip",
-        "bytes": 2269092,
-        "sha256": "66a91fba68d4d8a043052f2968f2a7f7eb616031c6c4e3b2bbd4457df26a2083",
+        "version": "0.3.3",
+        "url": "https://raw.githubusercontent.com/startupsalad/TikBit/main/desktop/packages/voice-notification-0.3.3.zip",
+        "bytes": 2270673,
+        "sha256": "0867e4b4364b93380480e6abfe9716e406805049c87202e1cd1add77070782fa",
         "skills": [
           "task-voice-notification"
         ],

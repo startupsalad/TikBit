@@ -9,7 +9,7 @@
 
 ---
 
-## 0.3.2 安装与升级边界
+## 0.3.3 安装与升级边界
 
 这是可选工具，不是插件默认功能。升级已安装用户请优先执行 `python update.py --check`，确认后执行 `python update.py`，必要时显式指定 `--target`；不要重跑整套安装覆盖用户选择、私有引擎或自定义钩子。私有改版请备份后人工合并。脚本更新与 AI 记忆规则须同时处理；插件 OTA 不会替换这套引擎。
 
@@ -141,118 +141,27 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME/.claude/notify-voice.
 
 ---
 
-## 第 4 步：接钩子到 Claude Code 配置
+## 第 4 步：合并支持的钩子
 
-编辑 `~/.claude/settings.json`（**先备份原文件**）：
+安装器按实际`CLAUDE_CONFIG_DIR`合并Claude的Notification与AskUserQuestion／ExitPlanMode PreToolUse，保留无关设置；配置解析失败时停止对应合并并说明，不清空原件。GPT采用自己的主动规则与配套插件原生回调，不写Claude事件到GPT hooks.json后冒称支持。
 
-### A. 通用版钩子配置
+管理安装优先使用原生等待事件，避免靠工具耗时猜授权。传统notify-gate是可选延时监测，可能把长命令误判为授权等待；未明确需要时不要为新用户启用。已有自定义Hook不擅自移除；兼容新插件的公开引擎会跳过已接管的对应Hook，避免重复。
 
-```json
-"hooks": {
-  "PreToolUse": [
-    {
-      "matcher": "AskUserQuestion|ExitPlanMode",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.claude/notify-voice.ps1\" -Mode ask 2>/dev/null || true"
-        }
-      ]
-    }
-  ],
-  "Notification": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.claude/notify-voice.ps1\" -Mode notify 2>/dev/null || true"
-        }
-      ]
-    }
-  ]
-}
-```
-
-### B. TikBit 版额外钩子（**开 YOLO 就别装，会误报**）
-
-**先问用户一句：YOLO 模式是开着的吗？**（TikBit 插件 UI 顶部那个 YOLO 开关）
-
-| 用户情况 | 怎么配 |
-|:---|:---|
-| **开着 YOLO**（推荐，多数人） | **跳过本节**，只用上面 A 的配置。YOLO 下工具自动授权、根本不弹授权窗，装了 notify-gate 只会误报"需要授权一下" |
-| **关着 YOLO**（手动授权每个操作） | 按下面加 notify-gate 的两个钩子 |
-
-下面这套仅"关着 YOLO"时才加 —— PreToolUse 打标记、PostToolUse 清标记，超时没清掉说明授权窗挂着，才播报：
-
-```json
-"hooks": {
-  "PreToolUse": [
-    {
-      "matcher": "AskUserQuestion|ExitPlanMode",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.claude/notify-voice.ps1\" -Mode ask 2>/dev/null || true"
-        }
-      ]
-    },
-    {
-      "matcher": "*",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.claude/notify-gate.ps1\" -Mode arm 2>/dev/null || true"
-        }
-      ]
-    }
-  ],
-  "PostToolUse": [
-    {
-      "matcher": "*",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.claude/notify-gate.ps1\" -Mode clear 2>/dev/null || true"
-        }
-      ]
-    }
-  ],
-  "Notification": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.claude/notify-voice.ps1\" -Mode notify 2>/dev/null || true"
-        }
-      ]
-    }
-  ]
-}
-```
-
-**注意**：
-- Mac 环境把 `powershell.exe` 改成 `bash`，把 `.ps1` 改成 `.sh`
-- Windows 路径请使用当前用户的 `$HOME/.claude/`；不要写死用户名或机器路径
+如需了解当前权限模式，可问：“TikBit 顶部的 YOLO 开关现在是开着还是关着？”这只用于解释授权频率；不为了恢复语音要求用户切换权限模式。
 
 ---
 
-## 第 5 步：更新 AI 记忆规则
+## 第 5 步：合并两边实际AI规则
 
-让 AI 记住“只有主对话整轮完成才主动播报”的规则；已有用户必须替换旧的无条件完成规则。
+首次安装用`python install.py`；旧用户用`python update.py --check`核对后再更新。0.3.3通过`rules.py`把四类规则安全合并到实际`CLAUDE_CONFIG_DIR/CLAUDE.md`与`CODEX_HOME/AGENTS.md`；未显式设置时维护已存在的标准与隔离入口。只替换`TIKBIT-VOICE`自有托管块，保留个人内容、已有Hook、音色和音频；私有引擎拒绝自动覆盖，失败恢复。
 
-告诉用户的 AI（通过自然语言，不需要手动编辑文件）：
+- 真正交付：主对话准备好最终答复后调用done一次。
+- 要授权：perm；要选择／确认：ask，包含可选问题、request_user_input及request_user_input_async。
+- 登录／验证码等必须人工操作：stuck；同一等待点一次，可自行修正的错误不播。
+- 文字提问仍需主动ask。配套插件管理的原生授权／选择／计划确认弹窗自动提醒，不再叠加手动播；未接管时不能声称原生自动提醒已启用。
+- 子任务禁止所有用户通知；不恢复Stop自动done、flag或猜编号。写入规则不等于旧会话已加载。
 
-> **请记住**：只有直接面向用户的主对话，在整轮回答全部完成（所有步骤跑完、验证和最终答复均已就绪）时，才主动运行一次：
-> 
-> ```bash
-> powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$HOME/.claude/notify-voice.ps1" -Mode done
-> ```
-> 
-> **子代理/后台任务禁止直接播报**：子任务做完只把结果交给主对话，不能喊 done 或改用 say/perm 绕过；确需人工介入也由主对话统一提醒。受控分支可设置 `TIKBIT_VOICE_SUPPRESS=1`（仅分支，不设全局）。
->
-> **中途动文件不单独喊，攒到最后整轮收尾时喊一次**——用户要验收的是最终结果，不是某个中间步骤。纯聊天/纯问答不喊。编号解析失败不手填、不猜别的标签，不恢复 flag/Stop 自动播报。
->
-> macOS收尾命令改为 `bash "$HOME/.claude/notify-voice.sh" done`；使用install.py安装的用户将目录改为 `~/.task-voice/`。
+设置入口安装使用包内`notification-rule.md`及`run.cjs`，保留用户选择，随配套插件核验原生等待回调；不要把Claude的Hook事件当作GPT支持的事件。
 
 ---
 
@@ -311,7 +220,7 @@ powershell -ExecutionPolicy Bypass -File ~/.claude/notify-voice.ps1 -Mode done
 
 ### 一直误报"需要授权一下"，但根本没弹窗
 
-**十有八九是开了 YOLO 还装了 notify-gate**。YOLO 下工具自动授权、不会弹授权窗，notify-gate 那套"超时未清标记就报警"的判定必然误触发。
+先核是否启用了传统notify-gate。延时监测无法可靠区分长命令与真实授权；不要仅凭工具超时认定弹窗存在，管理安装应由原生事件触发。
 
 修法：从 `settings.json` 删掉 notify-gate 的两条钩子（PreToolUse 的 `arm` + PostToolUse 的 `clear`，matcher 都是 `*`），保留 `AskUserQuestion|ExitPlanMode` 那条，重启客户端。清一下残留标记：
 
@@ -323,21 +232,9 @@ rm -f ~/.claude/.voice_gate/*.pending
 
 ---
 
-## 💡 强烈建议：开启 YOLO 模式（TikBit 用户）
+## 权限模式与提醒
 
-**装完记得告诉用户开 YOLO**，在 TikBit 插件 UI 顶部那个 **YOLO** 开关。
-
-**为什么建议开**：
-- 不用再手动授权 Write/Edit/Bash，工作流不被打断
-- 知识库外的路径操作（写桌面、读系统文件）也不卡了
-- 配合"跳过 notify-gate"的配置，语音提醒零误报
-
-**开了 YOLO 后语音还剩什么**：
-- ✅ 干完活播"对话N搞定啦" —— 主力功能，照常
-- ✅ 要你选方案/确认计划播"需要你拿个主意" —— 真正会卡住的场景，照常
-- ❌ 授权提醒 —— 用不上了（因为不再有授权窗），别装 notify-gate
-
-**注意**：YOLO 下 AI 能自由操作文件系统。不放心就保持关闭、按第 4 步 B 装 notify-gate，代价是每个越界操作都要手点一次授权。
+保留用户当前YOLO／安全模式。YOLO减少常规授权，但不能保证没有工具或安全确认；只在真实等待用户时提醒。管理安装由插件处理实际弹窗，传统延时gate不作为“零误报”的保证。完成、文字确认与必须人工操作仍按四类规则执行。
 
 ---
 
@@ -379,4 +276,4 @@ PowerShell `.ps1` 被 Git Bash 以 GBK 解析时中文会乱码。所以脚本�
 
 **音色**：默认使用晓晓（zh-CN-XiaoxiaoNeural）神经语音，自然流畅。如需切换音色，运行双击 `选择语音.bat`（Windows）或 `选择语音.command`（Mac）。
 
-**更新日期**：2026-10-31（对外名称统一为 TikBit；0.3.1 引擎及兼容路径不变）
+**更新日期**：2026-11-12（0.3.3，四类规则与配套原生等待集成）

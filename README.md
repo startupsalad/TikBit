@@ -14,6 +14,23 @@ https://github.com/startupsalad/TikBit
 
 `context-reminder` 已集成到工作台插件，不再作为本仓库工具。旧版工作台的独立必装 Skill 包仍保留为 `must-skills`，AI 识别到已有 docx/xlsx/pptx/pdf 等 Skill 时应跳过重复安装。
 
+## 工作台工具分发维护
+
+支持新分发入口的工作台优先从上海阿里云 OSS 下载，GitHub 保留源码、原目录和备用包。主清单为 `https://startupsalad-downloads.oss-cn-shanghai.aliyuncs.com/tikbit-tools/catalog.json`。
+
+工具内容变化时先升级该工具 `VERSION`，用 `scripts/build-desktop-tools.py` 生成完整包，按原流程将 GitHub 包先于目录发布，再同步 OSS；不能只更新其中一个下载通道。同步保持原目录和安装包字节，默认预检，显式 `--apply` 才上传：
+
+```bash
+python scripts/publish-desktop-tools.py --directory /path/to/complete-desktop --report /path/to/preflight.json
+python scripts/publish-desktop-tools.py --directory /path/to/complete-desktop --apply --report /path/to/publication.json
+```
+
+完整目录需包含 `catalog.json` 与 `packages/` 下全部目录引用包（含已核验 PPT 大包）。脚本只用 Python 标准库，从本机已有 `~/.ossutilconfig` 读取凭据，不输出密钥；支持 `--oss-config`。应用前核本地目录与官方 GitHub 已发目录内容一致，镜像保留官方原始字节，兼容 Windows 检出换行。先校验所有本地包，逐包上传后按公网 identity 响应核长度与 SHA256；同号不同内容拒绝覆盖，失败不更新清单。包全部通过后保留内容寻址清单和旧清单，再更新主清单；不删除旧包。无变化只核验，不重传。
+
+普通工具可独立更新，无须每次发布插件。插件发布前运行插件源码的 `node scripts/check-tool-distribution.mjs`，验证官方 GitHub 清单与 OSS 一致、所有包已就位；`upload-latest.sh` 已接入此检查。新客户端仍校验安装包大小、SHA256 和受信路径；旧客户端保持原 GitHub 行为。
+
+如果本机 Python 缺少 GitHub 证书链，同步器可借助工作台已有 Node.js 的默认 HTTPS 信任链读取官方清单；不会关闭证书校验，不下载新依赖。
+
 ## 三档推荐
 
 ### 必装
@@ -29,7 +46,7 @@ https://github.com/startupsalad/TikBit
 
 | 工具 | 适合场景 |
 |:---|:---|
-| `voice-notification` | 主对话完成/等待提醒；0.3.2修复数据迁移后静音，兼容旧版及自定义目录，支持安全更新 |
+| `voice-notification` | 主对话完成、授权和选择提醒；0.3.3补齐双引擎规则与隔离目录，支持配套工作台弹窗去重及安全更新 |
 | `writing-humanizer` | 经常写文案、陈述稿、讲稿和其他对外文字 |
 
 ### 按需
