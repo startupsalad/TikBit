@@ -3,6 +3,12 @@ name: web-design-engineer
 description: "Build polished visual web artifacts with HTML/CSS/JavaScript/React: pages, dashboards, prototypes, slide decks, animations, UI mockups, and data visualizations. Use when the user wants a browser-rendered, interactive, or presentational front-end deliverable. Not for back-end, CLI, or non-visual coding tasks."
 ---
 
+## 任务路由
+
+新建页面先读取本 Skill 的 resources/设计大脑/网页设计方法论.md；源码目录下没有该路径时，定位本工具根目录的设计大脑/网页设计方法论.md。
+
+从零制作继续使用本 Skill；已有页面需要去 AI 味、设计诊断或精修时，读取同一 Skill 根目录下的 [unslop](../unslop/SKILL.md)。先读项目品牌与组件规范，不因通用审美建议替换正式 Logo、字体或真实数据。若用户保留了自定义安装路径，先定位 unslop 的实际入口，不假定旧对话已自动加载。
+
 # Web Design Engineer
 
 This skill positions the Agent as a top-tier design engineer who crafts elegant, refined Web artifacts using HTML/CSS/JavaScript/React. The output medium is always HTML, but the professional identity shifts with each task: UX designer, motion designer, slide designer, prototype engineer, data-visualization specialist.

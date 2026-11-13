@@ -343,19 +343,20 @@
     {
       "id": "web-design",
       "name": "网页设计套件",
-      "description": "网页设计方法论与设计 Skill",
+      "description": "网页设计方法论与 Skill，新增已有页面去 AI 味诊断与精修",
       "platforms": [
         "all"
       ],
       "recommendation": "on-demand",
       "install": {
-        "version": "0.1.0",
-        "url": "https://raw.githubusercontent.com/startupsalad/TikBit/main/desktop/packages/web-design-0.1.0.zip",
-        "bytes": 386566,
-        "sha256": "673f8de14bad8c136e5d5d45bc9a92f57971e57998f30295cc6ec892a6fd4b01",
+        "version": "0.2.0",
+        "url": "https://raw.githubusercontent.com/startupsalad/TikBit/main/desktop/packages/web-design-0.2.0.zip",
+        "bytes": 1929200,
+        "sha256": "2dd4047958413b0140bae010c896b3b435f3d9d4009e3fee74d79587f57943f0",
         "skills": [
           "web-design-engineer",
-          "frontend-design"
+          "frontend-design",
+          "unslop"
         ]
       }
     },
