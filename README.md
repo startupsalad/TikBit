@@ -60,7 +60,7 @@ python scripts/publish-desktop-tools.py --directory /path/to/complete-desktop --
 | `ai-self-growth` | 在知识库积累用户画像、项目记忆和经验 |
 | `ppt-design` | PPT 制作 Skill 与指南 |
 | `ppt-style-gallery` | PPT 风格与 HTML 版式速查图册 |
-| `web-design` | 网页设计方法论与 Skill |
+| `web-design` | 网页设计与已有页面去 AI 味诊断、精修（0.2.0） |
 | `video-audio` | 统一入口的按需后端：视频下载、抽帧、本地转写与视频号流程；云转写自选 |
 | `video-channels-comment` | 视频号评论批量导出与分析 |
 | `ai-voice-pack` | Claude 回复后的系统语音朗读（Claude 专用） |

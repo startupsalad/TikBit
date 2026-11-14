@@ -4,6 +4,12 @@ description: Create distinctive, production-grade frontend interfaces with high 
 license: Complete terms in LICENSE.txt
 ---
 
+## 任务路由
+
+新建页面先读取本 Skill 的 resources/设计大脑/网页设计方法论.md；源码目录下没有该路径时，定位本工具根目录的设计大脑/网页设计方法论.md。
+
+从零制作继续使用本 Skill；已有页面需要去 AI 味、设计诊断或精修时，读取同一 Skill 根目录下的 [unslop](../unslop/SKILL.md)。先读项目品牌与组件规范，不因通用审美建议替换正式 Logo、字体或真实数据。若用户保留了自定义安装路径，先定位 unslop 的实际入口，不假定旧对话已自动加载。
+
 This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
 
 The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.

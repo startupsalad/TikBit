@@ -3,7 +3,7 @@
   "tools": [
     {"id":"writing-humanizer","skills":[{"source":"SKILL.md","name":"writing-humanizer-zh"}],"resources":[]},
     {"id":"html-page","skills":[{"source":".claude/skills/html-page","name":"html-page"}],"resources":["design-systems","README.md"]},
-    {"id":"web-design","skills":[{"source":"skills/web-design-engineer","name":"web-design-engineer"},{"source":"skills/frontend-design","name":"frontend-design"}],"resources":["设计大脑","README.md"]},
+    {"id":"web-design","skills":[{"source":"skills/web-design-engineer","name":"web-design-engineer"},{"source":"skills/frontend-design","name":"frontend-design"},{"source":"skills/unslop","name":"unslop"}],"resources":["设计大脑","README.md","INSTALL.md"]},
     {"id":"ai-marketing","skillDirectory":"skills","resources":[]},
     {"id":"must-skills","skillDirectory":"skills","resources":[],"setup":"python"},
     {"id":"document-reader","skills":[{"source":"skill","name":"document-reader"}],"resources":["."],"setup":"python"},
